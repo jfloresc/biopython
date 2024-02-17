@@ -62,11 +62,11 @@ class InterfaceBuilder(object):
         
         ss=[]
         #Launch DSSP calculation on the whole model (DSSP limitations)
-        dssp=DSSP(model, dssp='/home/mika/dssp/dsspcmbi')
+        dssp=DSSP(model, dssp='mkdssp')
         res_list = [r for r in model.get_residues() if r.id[0] == ' ']
         
         for elt in dssp:
-            print 'ELT', elt[1]
+            print ('ELT', elt[1])
             if elt[0] in self.interface:
                 ss.append(elt[1])
                 
