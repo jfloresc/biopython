@@ -352,6 +352,7 @@ class _PPBuilder:
         else:
             raise PDBException("Entity should be Structure, Model or Chain.")
         pp_list = []
+        chainid_list = [] # to keep track of chain ids
         for chain in chain_list:
             chain_it = iter(chain)
             try:
@@ -361,6 +362,7 @@ class _PPBuilder:
             except StopIteration:
                 # No interesting residues at all in this chain
                 continue
+            chainid_list.append(chain.id) # add chain id
             pp = None
             for next_res in chain_it:
                 if (
@@ -378,7 +380,7 @@ class _PPBuilder:
                     # End the current peptide
                     pp = None
                 prev_res = next_res
-        return pp_list
+        return pp_list, chainid_list
 
 
 class CaPPBuilder(_PPBuilder):
