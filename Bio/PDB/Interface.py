@@ -97,7 +97,7 @@ class Interface(Entity):
                     polar=polar+1
             else:
                 apolar=apolar+1
-        print polar, apolar, charged
+        print (polar, apolar, charged)
         polar_percentage=float(polar)/len(self)
         apolar_percentage=float(apolar)/len(self)
         charged_percentage=float(charged)/len(self)
@@ -171,8 +171,8 @@ class Interface(Entity):
             alt_seq=[to_one_letter_code[r.resname] for r in mobile.child_list]
             ref_seq.sort()
             alt_seq.sort()
-            print 'REFERENCE', ref_seq
-            print 'ALTERNATIVE', alt_seq
+            print ('REFERENCE', ref_seq)
+            print ('ALTERNATIVE', alt_seq)
             if ref_seq != alt_seq:
                 raise ValueError("Sequences doesn't match")
         
@@ -184,7 +184,7 @@ class Interface(Entity):
         super_imposer = Superimposer()
         super_imposer.set_atoms(ref_atoms, alt_atoms)
         
-        print "RMS = %0.2f" % super_imposer.rms
+        print ("RMS = %0.2f" % super_imposer.rms)
         
         return super_imposer.rms
         
