@@ -362,7 +362,6 @@ class _PPBuilder:
             except StopIteration:
                 # No interesting residues at all in this chain
                 continue
-            chainid_list.append(chain.id) # add chain id
             pp = None
             for next_res in chain_it:
                 if (
@@ -374,6 +373,7 @@ class _PPBuilder:
                         pp = Polypeptide()
                         pp.append(prev_res)
                         pp_list.append(pp)
+                        chainid_list.append(chain.id) # add chain id
                     pp.append(next_res)
                 else:
                     # Either too far apart, or one of the residues is unwanted.
