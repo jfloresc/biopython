@@ -27,7 +27,7 @@ class Interface(Entity):
 
     def __init__(self, id):
         self.level="I"
-        self.id=id
+        self._id=id
         self.neighbors = {}
         self.uniq_pairs = []
 
