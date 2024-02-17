@@ -7,7 +7,7 @@
 
 from Bio.PDB.Entity import Entity
 from Bio.Data import IUPACData
-from Bio.SCOP.Raf import to_one_letter_code
+from Bio.Data.IUPACData import protein_letters_3to1
 from Bio.PDB.PDBParser import PDBParser
 from Bio.PDB.NACCESS import NACCESS
 from Bio.PDB.NACCESS import NACCESS_atomic
@@ -89,7 +89,7 @@ class Interface(Entity):
         polar_list=getattr(IUPACData, "protein_polarity")
         charged_list=getattr(IUPACData, "protein_pka_side_chain")
         for r in self:
-            res=to_one_letter_code[r.resname]
+            res=protein_letters_3to1[r.resname]
             if res in polar_list['polar']:
                 if charged_list[res]:
                     charged=charged+1
@@ -167,8 +167,8 @@ class Interface(Entity):
         "Calculates Root Mean Square Deviation between 2 interfaces"
         
         if not mob_ref:
-            ref_seq=[to_one_letter_code[r.resname] for r in self.child_list]
-            alt_seq=[to_one_letter_code[r.resname] for r in mobile.child_list]
+            ref_seq=[protein_letters_3to1[r.resname] for r in self.child_list]
+            alt_seq=[protein_letters_3to1[r.resname] for r in mobile.child_list]
             ref_seq.sort()
             alt_seq.sort()
             print ('REFERENCE', ref_seq)
