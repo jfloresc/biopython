@@ -19,10 +19,12 @@ a dictionary of colours (if passed an iterable containing the names of
 categories to be coloured).
 """
 
-# standard library
 import colorsys  # colour format conversions
-from math import log, exp, floor, pi
 import random  # for jitter values
+from math import exp
+from math import floor
+from math import log
+from math import pi
 
 
 class ColorSpiral:
@@ -200,7 +202,4 @@ def get_color_dict(l, **kwargs):  # noqa: E741
     """
     cs = ColorSpiral(**kwargs)
     colors = cs.get_colors(len(l))
-    dict = {}
-    for item in l:
-        dict[item] = next(colors)
-    return dict
+    return dict(zip(l, colors))

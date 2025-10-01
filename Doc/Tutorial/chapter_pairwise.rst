@@ -8,9 +8,10 @@ each other by optimizing the similarity score between them. The
 ``Bio.Align`` module contains the ``PairwiseAligner`` class for global
 and local alignments using the Needleman-Wunsch, Smith-Waterman, Gotoh
 (three-state), and Waterman-Smith-Beyer global and local pairwise
-alignment algorithms, with numerous options to change the alignment
-parameters. We refer to Durbin *et al.* [Durbin1998]_
-for in-depth information on sequence alignment algorithms.
+alignment algorithms, and the Fast Optimal Global Alignment Algorithm (FOGSAA),
+with numerous options to change the alignment parameters. We refer to Durbin
+*et al.* [Durbin1998]_ for in-depth information on sequence alignment
+algorithms.
 
 .. _`sec:pairwise-basic`:
 
@@ -53,23 +54,35 @@ between two sequences:
 
 .. code:: pycon
 
-   >>> target = "GAACT"
-   >>> query = "GAT"
+   >>> target = "GAACTTT"
+   >>> query = "GATTT"
    >>> score = aligner.score(target, query)
    >>> score
    3.0
 
-The ``aligner.align`` method returns ``Alignment`` objects, each
-representing one alignment between the two sequences:
+The ``aligner.align`` method returns a ``PairwiseAlignments`` object, which is
+an iterator over the alignments found. The ``PairwiseAlignments`` object will
+tell you how many alignments were found, and what their score is:
 
 .. cont-doctest
 
 .. code:: pycon
 
    >>> alignments = aligner.align(target, query)
+   >>> alignments  # doctest: +ELLIPSIS
+   <PairwiseAlignments object (2 alignments; score=3) at 0x...>
+
+Each alignment between the two sequences is stored in an ``Alignment`` object.
+``Alignment`` objects can be obtained by iterating over the alignments or by
+indexing:
+
+.. cont-doctest
+
+.. code:: pycon
+
    >>> alignment = alignments[0]
    >>> alignment  # doctest: +ELLIPSIS
-   <Alignment object (2 rows x 5 columns) at ...>
+   <Alignment object (2 rows x 7 columns) at 0x...>
 
 Iterate over the ``Alignment`` objects and print them to see the
 alignments:
@@ -81,14 +94,25 @@ alignments:
    >>> for alignment in alignments:
    ...     print(alignment)
    ...
-   target            0 GAACT 5
-                     0 ||--| 5
-   query             0 GA--T 3
+   target            0 GAACTTT 7
+                     0 ||--||| 7
+   query             0 GA--TTT 5
    <BLANKLINE>
-   target            0 GAACT 5
-                     0 |-|-| 5
-   query             0 G-A-T 3
+   target            0 GAACTTT 7
+                     0 |-|-||| 7
+   query             0 G-A-TTT 5
    <BLANKLINE>
+
+Use indices to get the aligned sequence (see :ref:`subsec:slicing-indexing-alignment`):
+
+.. cont-doctest
+
+.. code:: pycon
+
+   >>> alignment[0]
+   'GAACTTT'
+   >>> alignment[1]
+   'G-A-TTT'
 
 Each alignment stores the alignment score:
 
@@ -106,12 +130,11 @@ as well as pointers to the sequences that were aligned:
 .. code:: pycon
 
    >>> alignment.target
-   'GAACT'
+   'GAACTTT'
    >>> alignment.query
-   'GAT'
+   'GATTT'
 
-Internally, the alignment is stored in terms of the sequence
-coordinates:
+Internally, the alignment is stored in terms of the sequence coordinates:
 
 .. cont-doctest
 
@@ -119,8 +142,8 @@ coordinates:
 
    >>> alignment = alignments[0]
    >>> alignment.coordinates
-   array([[0, 2, 4, 5],
-          [0, 2, 2, 3]])
+   array([[0, 2, 4, 7],
+          [0, 2, 2, 5]])
 
 Here, the two rows refer to the target and query sequence. These
 coordinates show that the alignment consists of the following three
@@ -129,9 +152,9 @@ blocks:
 -  ``target[0:2]`` aligned to ``query[0:2]``;
 
 -  ``target[2:4]`` aligned to a gap, since ``query[2:2]`` is an empty
-   string;
+   string (i.e., a deletion);
 
--  ``target[4:5]`` aligned to ``query[2:3]``.
+-  ``target[4:7]`` aligned to ``query[2:5]``.
 
 The number of aligned sequences is always 2 for a pairwise alignment:
 
@@ -152,7 +175,7 @@ query:
 .. code:: pycon
 
    >>> alignment.length
-   5
+   7
 
 The ``aligned`` property, which returns the start and end indices of
 aligned subsequences, returns two tuples of length 2 for the first
@@ -164,10 +187,10 @@ alignment:
 
    >>> alignment.aligned
    array([[[0, 2],
-           [4, 5]],
+           [4, 7]],
    <BLANKLINE>
           [[0, 2],
-           [2, 3]]])
+           [2, 5]]])
 
 while for the alternative alignment, two tuples of length 3 are
 returned:
@@ -178,18 +201,18 @@ returned:
 
    >>> alignment = alignments[1]
    >>> print(alignment)
-   target            0 GAACT 5
-                     0 |-|-| 5
-   query             0 G-A-T 3
+   target            0 GAACTTT 7
+                     0 |-|-||| 7
+   query             0 G-A-TTT 5
    <BLANKLINE>
    >>> alignment.aligned
    array([[[0, 1],
            [2, 3],
-           [4, 5]],
+           [4, 7]],
    <BLANKLINE>
           [[0, 1],
            [1, 2],
-           [2, 3]]])
+           [2, 5]]])
 
 Note that different alignments may have the same subsequences aligned to
 each other. In particular, this may occur if alignments differ from each
@@ -320,6 +343,32 @@ alignments if segments with a score 0 can be added to the alignment. We
 follow the suggestion by Waterman & Eggert
 [Waterman1987]_ and disallow such extensions.
 
+If ``aligner.mode`` is set to ``"fogsaa"``, then the Fast Optimal Global
+Alignment Algorithm [Chakraborty2013]_ with some modifications is used. This
+mode also calculates a global alignment, but uses a heuristic to detect steps
+in an alignment that cannot lead to an optimal alignment. This can speed up
+alignment and is best suited for long alignments between similar sequences.
+The heuristic makes assumptions about your match, mismatch, and gap scores. If
+the match score is less than the mismatch score or any gap score, or if any gap
+score is greater than the mismatch score, then a warning is raised and the
+algorithm may return incorrect results. Unlike other modes, which may return
+more than one alignment, FOGSAA always returns only one alignment.
+
+.. cont-doctest
+
+.. code:: pycon
+
+   >>> aligner.mode = "fogsaa"
+   >>> aligner.mismatch_score = -10
+   >>> alignments = aligner.align("AAACAAA", "AAAGAAA")
+   >>> len(alignments)
+   1
+   >>> print(alignments[0])
+   target            0 AAAC-AAA 7
+                     0 |||--||| 8
+   query             0 AAA-GAAA 7
+   <BLANKLINE>
+
 .. _`sec:pairwise-aligner`:
 
 The pairwise aligner object
@@ -340,18 +389,18 @@ all parameters, use
      wildcard: None
      match_score: 1.000000
      mismatch_score: 0.000000
-     target_internal_open_gap_score: 0.000000
-     target_internal_extend_gap_score: 0.000000
-     target_left_open_gap_score: 0.000000
-     target_left_extend_gap_score: 0.000000
-     target_right_open_gap_score: 0.000000
-     target_right_extend_gap_score: 0.000000
-     query_internal_open_gap_score: 0.000000
-     query_internal_extend_gap_score: 0.000000
-     query_left_open_gap_score: 0.000000
-     query_left_extend_gap_score: 0.000000
-     query_right_open_gap_score: 0.000000
-     query_right_extend_gap_score: 0.000000
+     open_internal_insertion_score: -1.000000
+     extend_internal_insertion_score: -1.000000
+     open_left_insertion_score: -1.000000
+     extend_left_insertion_score: -1.000000
+     open_right_insertion_score: -1.000000
+     extend_right_insertion_score: -1.000000
+     open_internal_deletion_score: -1.000000
+     extend_internal_deletion_score: -1.000000
+     open_left_deletion_score: -1.000000
+     extend_left_deletion_score: -1.000000
+     open_right_deletion_score: -1.000000
+     extend_right_deletion_score: -1.000000
      mode: local
    <BLANKLINE>
 
@@ -524,43 +573,43 @@ object:
 ================================== ====================================
 **Opening scores**                 **Extending scores**
 ================================== ====================================
-``query_left_open_gap_score``      ``query_left_extend_gap_score``
-``query_internal_open_gap_score``  ``query_internal_extend_gap_score``
-``query_right_open_gap_score``     ``query_right_extend_gap_score``
-``target_left_open_gap_score``     ``target_left_extend_gap_score``
-``target_internal_open_gap_score`` ``target_internal_extend_gap_score``
-``target_right_open_gap_score``    ``target_right_extend_gap_score``
+``open_left_deletion_score``       ``extend_left_deletion_score``
+``open_internal_deletion_score``   ``extend_internal_deletion_score``
+``open_right_deletion_score``      ``extend_right_deletion_score``
+``open_left_insertion_score``      ``extend_left_insertion_score``
+``open_internal_insertion_score``  ``extend_internal_insertion_score``
+``open_right_insertion_score``     ``extend_right_insertion_score``
 ================================== ====================================
 
 These attributes allow for different gap scores for internal gaps and on
 either end of the sequence, as shown in this example:
 
-========== ========= ================================
+========== ========= ===============================
 **target** **query** **score**
-========== ========= ================================
-A          -         query left open gap score
-C          -         query left extend gap score
-C          -         query left extend gap score
+========== ========= ===============================
+A          -         open left deletion score
+C          -         extend left deletion score
+C          -         extend left deletion score
 G          G         match score
 G          T         mismatch score
-G          -         query internal open gap score
-A          -         query internal extend gap score
-A          -         query internal extend gap score
+G          -         open internal deletion score
+A          -         extend internal deletion score
+A          -         extend internal deletion score
 T          T         match score
 A          A         match score
-G          -         query internal open gap score
+G          -         open internal deletion score
 C          C         match score
--          C         target internal open gap score
--          C         target internal extend gap score
+-          C         open internal insertion score
+-          C         extend internal insertion score
 C          C         match score
 T          G         mismatch score
 C          C         match score
--          C         target internal open gap score
+-          C         open internal insertion score
 A          A         match score
--          T         target right open gap score
--          A         target right extend gap score
--          A         target right extend gap score
-========== ========= ================================
+-          T         open right insertion score
+-          A         extend right insertion score
+-          A         extend right insertion score
+========== ========= ===============================
 
 For convenience, ``PairwiseAligner`` objects have additional attributes
 that refer to a number of these values collectively, as shown
@@ -569,112 +618,112 @@ that refer to a number of these values collectively, as shown
 .. table:: Meta-attributes of the pairwise aligner objects.
    :name: table:align-meta-attributes
 
-   +---------------------------------+---------------------------------------+
-   | Meta-attribute                  | Attributes it maps to                 |
-   +=================================+=======================================+
-   | ``gap_score``                   | ``target_gap_score``,                 |
-   |                                 | ``query_gap_score``                   |
-   +---------------------------------+---------------------------------------+
-   | ``open_gap_score``              | ``target_open_gap_score``,            |
-   |                                 | ``query_open_gap_score``              |
-   +---------------------------------+---------------------------------------+
-   | ``extend_gap_score``            | ``target_extend_gap_score``,          |
-   |                                 | ``query_extend_gap_score``            |
-   +---------------------------------+---------------------------------------+
-   | ``internal_gap_score``          | ``target_internal_gap_score``,        |
-   |                                 | ``query_internal_gap_score``          |
-   +---------------------------------+---------------------------------------+
-   | ``internal_open_gap_score``     | ``target_internal_open_gap_score``,   |
-   |                                 | ``query_internal_open_gap_score``     |
-   +---------------------------------+---------------------------------------+
-   | ``internal_extend_gap_score``   | ``target_internal_extend_gap_score``, |
-   |                                 | ``query_internal_extend_gap_score``   |
-   +---------------------------------+---------------------------------------+
-   | ``end_gap_score``               | ``target_end_gap_score``,             |
-   |                                 | ``query_end_gap_score``               |
-   +---------------------------------+---------------------------------------+
-   | ``end_open_gap_score``          | ``target_end_open_gap_score``,        |
-   |                                 | ``query_end_open_gap_score``          |
-   +---------------------------------+---------------------------------------+
-   | ``end_extend_gap_score``        | ``target_end_extend_gap_score``,      |
-   |                                 | ``query_end_extend_gap_score``        |
-   +---------------------------------+---------------------------------------+
-   | ``left_gap_score``              | ``target_left_gap_score``,            |
-   |                                 | ``query_left_gap_score``              |
-   +---------------------------------+---------------------------------------+
-   | ``right_gap_score``             | ``target_right_gap_score``,           |
-   |                                 | ``query_right_gap_score``             |
-   +---------------------------------+---------------------------------------+
-   | ``left_open_gap_score``         | ``target_left_open_gap_score``,       |
-   |                                 | ``query_left_open_gap_score``         |
-   +---------------------------------+---------------------------------------+
-   | ``left_extend_gap_score``       | ``target_left_extend_gap_score``,     |
-   |                                 | ``query_left_extend_gap_score``       |
-   +---------------------------------+---------------------------------------+
-   | ``right_open_gap_score``        | ``target_right_open_gap_score``,      |
-   |                                 | ``query_right_open_gap_score``        |
-   +---------------------------------+---------------------------------------+
-   | ``right_extend_gap_score``      | ``target_right_extend_gap_score``,    |
-   |                                 | ``query_right_extend_gap_score``      |
-   +---------------------------------+---------------------------------------+
-   | ``target_open_gap_score``       | ``target_internal_open_gap_score``,   |
-   |                                 | ``target_left_open_gap_score``,       |
-   |                                 | ``target_right_open_gap_score``       |
-   +---------------------------------+---------------------------------------+
-   | ``target_extend_gap_score``     | ``target_internal_extend_gap_score``, |
-   |                                 | ``target_left_extend_gap_score``,     |
-   |                                 | ``target_right_extend_gap_score``     |
-   +---------------------------------+---------------------------------------+
-   | ``target_gap_score``            | ``target_open_gap_score``,            |
-   |                                 | ``target_extend_gap_score``           |
-   +---------------------------------+---------------------------------------+
-   | ``query_open_gap_score``        | ``query_internal_open_gap_score``,    |
-   |                                 | ``query_left_open_gap_score``,        |
-   |                                 | ``query_right_open_gap_score``        |
-   +---------------------------------+---------------------------------------+
-   | ``query_extend_gap_score``      | ``query_internal_extend_gap_score``,  |
-   |                                 | ``query_left_extend_gap_score``,      |
-   |                                 | ``query_right_extend_gap_score``      |
-   +---------------------------------+---------------------------------------+
-   | ``query_gap_score``             | ``query_open_gap_score``,             |
-   |                                 | ``query_extend_gap_score``            |
-   +---------------------------------+---------------------------------------+
-   | ``target_internal_gap_score``   | ``target_internal_open_gap_score``,   |
-   |                                 | ``target_internal_extend_gap_score``  |
-   +---------------------------------+---------------------------------------+
-   | ``target_end_gap_score``        | ``target_end_open_gap_score``,        |
-   |                                 | ``target_end_extend_gap_score``       |
-   +---------------------------------+---------------------------------------+
-   | ``target_end_open_gap_score``   | ``target_left_open_gap_score``,       |
-   |                                 | ``target_right_open_gap_score``       |
-   +---------------------------------+---------------------------------------+
-   | ``target_end_extend_gap_score`` | ``target_left_extend_gap_score``,     |
-   |                                 | ``target_right_extend_gap_score``     |
-   +---------------------------------+---------------------------------------+
-   | ``target_left_gap_score``       | ``target_left_open_gap_score``,       |
-   |                                 | ``target_left_extend_gap_score``      |
-   +---------------------------------+---------------------------------------+
-   | ``target_right_gap_score``      | ``target_right_open_gap_score``,      |
-   |                                 | ``target_right_extend_gap_score``     |
-   +---------------------------------+---------------------------------------+
-   | ``query_end_gap_score``         | ``query_end_open_gap_score``,         |
-   |                                 | ``query_end_extend_gap_score``        |
-   +---------------------------------+---------------------------------------+
-   | ``query_end_open_gap_score``    | ``query_left_open_gap_score``,        |
-   |                                 | ``query_right_open_gap_score``        |
-   +---------------------------------+---------------------------------------+
-   | ``query_end_extend_gap_score``  | ``query_left_extend_gap_score``,      |
-   |                                 | ``query_right_extend_gap_score``      |
-   +---------------------------------+---------------------------------------+
-   | ``query_internal_gap_score``    | ``query_internal_open_gap_score``,    |
-   |                                 | ``query_internal_extend_gap_score``   |
-   +---------------------------------+---------------------------------------+
-   | ``query_left_gap_score``        | ``query_left_open_gap_score``,        |
-   |                                 | ``query_left_extend_gap_score``       |
-   +---------------------------------+---------------------------------------+
-   | ``query_right_gap_score``       | ``query_right_open_gap_score``,       |
-   |                                 | ``query_right_extend_gap_score``      |
-   +---------------------------------+---------------------------------------+
+   +--------------------------------+--------------------------------------+
+   | Meta-attribute                 | Attributes it maps to                |
+   +================================+======================================+
+   | ``gap_score``                  | ``insertion_score``,                 |
+   |                                | ``deletion_score``                   |
+   +--------------------------------+--------------------------------------+
+   | ``open_gap_score``             | ``open_insertion_score``,            |
+   |                                | ``open_deletion_score``              |
+   +--------------------------------+--------------------------------------+
+   | ``extend_gap_score``           | ``extend_insertion_score``,          |
+   |                                | ``extend_deletion_score``            |
+   +--------------------------------+--------------------------------------+
+   | ``internal_gap_score``         | ``internal_insertion_score``,        |
+   |                                | ``internal_deletion_score``          |
+   +--------------------------------+--------------------------------------+
+   | ``open_internal_gap_score``    | ``open_internal_insertion_score``,   |
+   |                                | ``open_internal_deletion_score``     |
+   +--------------------------------+--------------------------------------+
+   | ``extend_internal_gap_score``  | ``extend_internal_insertion_score``, |
+   |                                | ``extend_internal_deletion_score``   |
+   +--------------------------------+--------------------------------------+
+   | ``end_gap_score``              | ``end_insertion_score``,             |
+   |                                | ``end_deletion_score``               |
+   +--------------------------------+--------------------------------------+
+   | ``open_end_gap_score``         | ``open_end_insertion_score``,        |
+   |                                | ``open_end_deletion_score``          |
+   +--------------------------------+--------------------------------------+
+   | ``extend_end_gap_score``       | ``extend_end_insertion_score``,      |
+   |                                | ``extend_end_deletion_score``        |
+   +--------------------------------+--------------------------------------+
+   | ``left_gap_score``             | ``left_insertion_score``,            |
+   |                                | ``left_deletion_score``              |
+   +--------------------------------+--------------------------------------+
+   | ``right_gap_score``            | ``right_insertion_score``,           |
+   |                                | ``right_deletion_score``             |
+   +--------------------------------+--------------------------------------+
+   | ``open_left_gap_score``        | ``open_left_insertion_score``,       |
+   |                                | ``open_left_deletion_score``         |
+   +--------------------------------+--------------------------------------+
+   | ``extend_left_gap_score``      | ``extend_left_insertion_score``,     |
+   |                                | ``extend_left_deletion_score``       |
+   +--------------------------------+--------------------------------------+
+   | ``open_right_gap_score``       | ``open_right_insertion_score``,      |
+   |                                | ``open_right_deletion_score``        |
+   +--------------------------------+--------------------------------------+
+   | ``extend_right_gap_score``     | ``extend_right_insertion_score``,    |
+   |                                | ``extend_right_deletion_score``      |
+   +--------------------------------+--------------------------------------+
+   | ``open_insertion_score``       | ``open_internal_insertion_score``,   |
+   |                                | ``open_left_insertion_score``,       |
+   |                                | ``open_right_insertion_score``       |
+   +--------------------------------+--------------------------------------+
+   | ``extend_insertion_score``     | ``extend_internal_insertion_score``, |
+   |                                | ``extend_left_insertion_score``,     |
+   |                                | ``extend_right_insertion_score``     |
+   +--------------------------------+--------------------------------------+
+   | ``insertion_score``            | ``open_insertion_score``,            |
+   |                                | ``extend_insertion_score``           |
+   +--------------------------------+--------------------------------------+
+   | ``open_deletion_score``        | ``open_internal_deletion_score``,    |
+   |                                | ``open_left_deletion_score``,        |
+   |                                | ``open_right_deletion_score``        |
+   +--------------------------------+--------------------------------------+
+   | ``extend_deletion_score``      | ``extend_internal_deletion_score``,  |
+   |                                | ``extend_left_deletion_score``,      |
+   |                                | ``extend_right_deletion_score``      |
+   +--------------------------------+--------------------------------------+
+   | ``deletion_score``             | ``open_deletion_score``,             |
+   |                                | ``extend_deletion_score``            |
+   +--------------------------------+--------------------------------------+
+   | ``internal_insertion_score``   | ``open_internal_insertion_score``,   |
+   |                                | ``extend_internal_insertion_score``  |
+   +--------------------------------+--------------------------------------+
+   | ``end_insertion_score``        | ``open_end_insertion_score``,        |
+   |                                | ``extend_end_insertion_score``       |
+   +--------------------------------+--------------------------------------+
+   | ``open_end_insertion_score``   | ``open_left_insertion_score``,       |
+   |                                | ``open_right_insertion_score``       |
+   +--------------------------------+--------------------------------------+
+   | ``extend_end_insertion_score`` | ``extend_left_insertion_score``,     |
+   |                                | ``extend_right_insertion_score``     |
+   +--------------------------------+--------------------------------------+
+   | ``left_insertion_score``       | ``open_left_insertion_score``,       |
+   |                                | ``extend_left_insertion_score``      |
+   +--------------------------------+--------------------------------------+
+   | ``right_insertion_score``      | ``open_right_insertion_score``,      |
+   |                                | ``extend_right_insertion_score``     |
+   +--------------------------------+--------------------------------------+
+   | ``end_deletion_score``         | ``open_end_deletion_score``,         |
+   |                                | ``extend_end_deletion_score``        |
+   +--------------------------------+--------------------------------------+
+   | ``open_end_deletion_score``    | ``open_left_deletion_score``,        |
+   |                                | ``open_right_deletionp_score``       |
+   +--------------------------------+--------------------------------------+
+   | ``extend_end_deletion_score``  | ``extend_left_deletion_score``,      |
+   |                                | ``extend_right_deletion_score``      |
+   +--------------------------------+--------------------------------------+
+   | ``internal_deletion_score``    | ``open_internal_deletion_score``,    |
+   |                                | ``extend_internal_deletion_score``   |
+   +--------------------------------+--------------------------------------+
+   | ``left_deletion_score``        | ``open_left_deletion_score``,        |
+   |                                | ``extend_left_deletion_score``       |
+   +--------------------------------+--------------------------------------+
+   | ``right_deletion_score``       | ``open_right_deletion_score``,       |
+   |                                | ``extend_right_deletion_score``      |
+   +--------------------------------+--------------------------------------+
 
 .. _`sec:pairwise-general-gapscores`:
 
@@ -683,7 +732,7 @@ General gap scores
 
 For even more fine-grained control over the gap scores, you can specify
 a gap scoring function. For example, the gap scoring function below
-disallows a gap after two nucleotides in the query sequence:
+disallows a deletion after two nucleotides in the query sequence:
 
 .. doctest
 
@@ -697,7 +746,7 @@ disallows a gap after two nucleotides in the query sequence:
    ...     else:
    ...         return -1 * length
    ...
-   >>> aligner.query_gap_score = my_gap_score_function
+   >>> aligner.deletion_score = my_gap_score_function
    >>> alignments = aligner.align("AACTT", "AATT")
    >>> for alignment in alignments:
    ...     print(alignment)
@@ -724,14 +773,25 @@ disallows a gap after two nucleotides in the query sequence:
 Using a pre-defined substitution matrix and gap scores
 ------------------------------------------------------
 
-By default, a ``PairwiseAligner`` object is initialized with a match
-score of +1.0, a mismatch score of 0.0, and all gap scores equal to 0.0,
-While this has the benefit of being a simple scoring scheme, in general
-it does not give the best performance. Instead, you can use the argument
-``scoring`` to select a predefined scoring scheme when initializing a
-``PairwiseAligner`` object. Currently, the provided scoring schemes are
-``blastn`` and ``megablast``, which are suitable for nucleotide
-alignments, and ``blastp``, which is suitable for protein alignments.
+Currently, a ``PairwiseAligner`` object is initialized by default with a match
+score of +1.0, a mismatch score of 0.0, and all gap scores equal to -1.0.
+Biopython versions 1.85 and older used a default gap score of 0.0 (this choice
+was made to be consistent with the older pairwise aligner in ``Bio.pairwise2``,
+which uses a default gap score of 0.0). However, this scheme assigns the same
+score to a mismatch and a insertion or deletion, e.g.
+
+.. code:: pycon
+
+    A      A-      -A
+    C      -C      C-
+
+are evaluated equally, which tends to result in a large number of alignments
+that are only trivially different from each other. While the current scoring
+scheme avoids this problem, in general you may get better performance using
+a predefined scoring scheme, which you can select using the ``scoring``
+argument when initializing a ``PairwiseAligner`` object. Currently, the
+provided scoring schemes are ``blastn`` and ``megablast``, which are suitable
+for nucleotide alignments, and ``blastp``, suitable for protein alignments.
 Selecting these scoring schemes will initialize the ``PairwiseAligner``
 object to the default scoring parameters used by BLASTN, MegaBLAST, and
 BLASTP, respectively.
@@ -742,21 +802,21 @@ BLASTP, respectively.
 
    >>> from Bio import Align
    >>> aligner = Align.PairwiseAligner(scoring="blastn")
-   >>> print(aligner)  # doctest:+ELLIPSIS
+   >>> print(aligner)
    Pairwise sequence aligner with parameters
      substitution_matrix: <Array object at ...>
-     target_internal_open_gap_score: -7.000000
-     target_internal_extend_gap_score: -2.000000
-     target_left_open_gap_score: -7.000000
-     target_left_extend_gap_score: -2.000000
-     target_right_open_gap_score: -7.000000
-     target_right_extend_gap_score: -2.000000
-     query_internal_open_gap_score: -7.000000
-     query_internal_extend_gap_score: -2.000000
-     query_left_open_gap_score: -7.000000
-     query_left_extend_gap_score: -2.000000
-     query_right_open_gap_score: -7.000000
-     query_right_extend_gap_score: -2.000000
+     open_internal_insertion_score: -7.000000
+     extend_internal_insertion_score: -2.000000
+     open_left_insertion_score: -7.000000
+     extend_left_insertion_score: -2.000000
+     open_right_insertion_score: -7.000000
+     extend_right_insertion_score: -2.000000
+     open_internal_deletion_score: -7.000000
+     extend_internal_deletion_score: -2.000000
+     open_left_deletion_score: -7.000000
+     extend_left_deletion_score: -2.000000
+     open_right_deletion_score: -7.000000
+     extend_right_deletion_score: -2.000000
      mode: global
    <BLANKLINE>
    >>> print(aligner.substitution_matrix[:, :])
@@ -857,7 +917,7 @@ You can perform the following operations on ``alignments``:
    .. code:: pycon
 
       >>> print(alignments.score)
-      2.0
+      1.0
 
 Aligning to the reverse strand
 ------------------------------
@@ -876,6 +936,7 @@ for ``query`` to the reverse strand of ``target``, use ``strand="-"``:
    >>> query = "AACC"
    >>> aligner = Align.PairwiseAligner()
    >>> aligner.mismatch_score = -1
+   >>> aligner.gap_score = 0
    >>> aligner.internal_gap_score = -1
    >>> aligner.score(target, query)  # strand is "+" by default
    4.0
@@ -1011,9 +1072,7 @@ The allowed letters are stored in the ``alphabet`` property:
    >>> counts.alphabet
    'ACGT'
 
-This property is read-only; modifying the underlying ``_alphabet``
-attribute may lead to unexpected results. Elements can be accessed both
-by letter and by integer index:
+Elements can be accessed both by letter and by integer index:
 
 .. cont-doctest
 
@@ -1415,8 +1474,8 @@ of each residue:
    K 0.2569
    R 0.1697
    <BLANKLINE>
-   >>> background.sum()
-   1.0
+   >>> sum(background) == 1.0
+   True
 
 The expected frequency of residue pairs is then
 
@@ -1436,7 +1495,7 @@ The expected frequency of residue pairs is then
 
 Here, ``background[:, None]`` creates a 2D array consisting of a single
 column with the values of ``expected_frequencies``, and
-``rxpected_frequencies[None, :]`` a 2D array with these values as a
+``expected_frequencies[None, :]`` a 2D array with these values as a
 single row. Taking their dot product (inner product) creates a matrix of
 expected frequencies where each entry consists of two
 ``expected_frequencies`` values multiplied with each other. For example,
@@ -1718,9 +1777,9 @@ hemoglobin sequences from above (``HBA_HUMAN``, ``HBB_HUMAN``) stored in
    >>> aligner = Align.PairwiseAligner()
    >>> score = aligner.score(seq1.seq, seq2.seq)
    >>> print(score)
-   72.0
+   56.0
 
-showing an alignment score of 72.0. To see the individual alignments, do
+showing an alignment score of 56.0. To see the individual alignments, do
 
 .. cont-doctest
 
@@ -1755,28 +1814,24 @@ alignment itself:
 .. code:: pycon
 
    >>> print(alignment.score)
-   72.0
+   56.0
    >>> print(alignment)
-   target            0 MV-LS-PAD--KTN--VK-AA-WGKV-----GAHAGEYGAEALE-RMFLSF----P-TTK
-                     0 ||-|--|----|----|--|--||||-----|---||--|--|--|--|------|-|--
-   query             0 MVHL-TP--EEK--SAV-TA-LWGKVNVDEVG---GE--A--L-GR--L--LVVYPWT--
+   target            0 MV-LSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHF-DLSHGSAQ---
+                     0 ||-|.|..|..|.|.||||...--|.|.|||.|.....|.|...|..|-|||...|.---
+   query             0 MVHLTPEEKSAVTALWGKVNVD--EVGGEALGRLLVVYPWTQRFFESFGDLSTPDAVMGN
    <BLANKLINE>
-   target           41 TY--FPHF----DLSHGS---AQVK-G------HGKKV--A--DA-LTNAVAHV-DDMPN
-                    60 ----|--|----|||------|-|--|------|||||--|--|--|--|--|--|---|
-   query            39 --QRF--FESFGDLS---TPDA-V-MGNPKVKAHGKKVLGAFSD-GL--A--H-LD---N
+   target           55 --VKGHGKKVADALTNAVAHVDDMPNALSALSDLHAHKLRVDPVNFKLLSHCLLVTLAAH
+                    60 --||.|||||..|.....||.|........||.||..||.|||.||.||...|...||.|
+   query            58 PKVKAHGKKVLGAFSDGLAHLDNLKGTFATLSELHCDKLHVDPENFRLLGNVLVCVLAHH
    <BLANKLINE>
-   target           79 ALS----A-LSD-LHAH--KLR-VDPV-NFK-LLSHC---LLVT--LAAHLPA----EFT
-                   120 -|-----|-||--||----||--|||--||--||------|-|---||-|-------|||
-   query            81 -L-KGTFATLS-ELH--CDKL-HVDP-ENF-RLL---GNVL-V-CVLA-H---HFGKEFT
-   <BLANKLINE>
-   target          119 PA-VH-ASLDKFLAS---VSTV------LTS--KYR- 142
-                   180 |--|--|------|----|--|------|----||-- 217
-   query           124 P-PV-QA------A-YQKV--VAGVANAL--AHKY-H 147
+   target          113 LPAEFTPAVHASLDKFLASVSTVLTSKYR 142
+                   120 ...||||.|.|...|..|.|...|..||. 149
+   query           118 FGKEFTPPVQAAYQKVVAGVANALAHKYH 147
    <BLANKLINE>
 
 Better alignments are usually obtained by penalizing gaps: higher costs
 for opening a gap and lower costs for extending an existing gap. For
-amino acid sequences match scores are usually encoded in matrices like
+amino acid sequences, match scores are usually encoded in matrices like
 ``PAM`` or ``BLOSUM``. Thus, a more meaningful alignment for our example
 can be obtained by using the BLOSUM62 matrix, together with a gap open
 penalty of 10 and a gap extension penalty of 0.5:
@@ -1851,8 +1906,8 @@ nucleotides or amino acids. More generally, ``PairwiseAligner`` can also
 be applied to lists or tuples of arbitrary objects. This section will
 describe some examples of such generalized pairwise alignments.
 
-Generalized pairwise alignments using a substitution matrix and alphabet
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Generalized pairwise alignments using a substitution matrix
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Schneider *et al.* [Schneider2005]_ created a
 substitution matrix for aligning three-nucleotide codons (see
@@ -1937,8 +1992,8 @@ compared to ``CTC``, though all three code for leucine:
    >>> print(m["CTC", "TTA"])
    6.5
 
-Generalized pairwise alignments using match/mismatch scores and an alphabet
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Generalized pairwise alignments using match/mismatch scores
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Using the three-letter amino acid symbols, the sequences above translate
 to
@@ -1950,21 +2005,6 @@ to
    >>> s1 = ("Asn", "Leu", "Leu", "Phe")
    >>> s2 = ("Asn", "Leu", "Phe")
 
-We can align these sequences directly to each other by using a
-three-letter amino acid alphabet:
-
-.. cont-doctest
-
-.. code:: pycon
-
-   >>> from Bio import Align
-   >>> aligner = Align.PairwiseAligner()
-   >>> aligner.alphabet = ['Ala', 'Arg', 'Asn', 'Asp', 'Cys',
-   ...                     'Gln', 'Glu', 'Gly', 'His', 'Ile',
-   ...                     'Leu', 'Lys', 'Met', 'Phe', 'Pro',
-   ...                     'Ser', 'Thr', 'Trp', 'Tyr', 'Val']  # fmt: skip
-   ...
-
 We use +6/-1 match and mismatch scores as an approximation of the
 BLOSUM62 matrix, and align these sequences to each other:
 
@@ -1972,6 +2012,8 @@ BLOSUM62 matrix, and align these sequences to each other:
 
 .. code:: pycon
 
+   >>> from Bio import Align
+   >>> aligner = Align.PairwiseAligner()
    >>> aligner.match = +6
    >>> aligner.mismatch = -1
    >>> alignments = aligner.align(s1, s2)
@@ -1988,14 +2030,15 @@ BLOSUM62 matrix, and align these sequences to each other:
    Asn --- Leu Phe
    <BLANKLINE>
    >>> print(alignments.score)
-   18.0
+   17.0
 
 Generalized pairwise alignments using match/mismatch scores and integer sequences
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Internally, the first step when performing an alignment is to replace
-the two sequences by integer arrays consisting of the indices of each
-letter in each sequence in the alphabet associated with the aligner.
+Internally, the first step when performing an alignment is to create a
+temporary alphabet consisting of the letters in the two sequences, and
+replacing the sequences by integer arrays consisting of the indices of each
+letter in the alphabet.
 This step can be bypassed by passing integer arrays directly:
 
 .. doctest . lib:numpy
@@ -2023,7 +2066,7 @@ This step can be bypassed by passing integer arrays directly:
    2 -- 10 13
    <BLANKLINE>
    >>> print(alignments.score)
-   18.0
+   17.0
 
 Note that the indices should consist of 32-bit integers, as specified in
 this example by ``numpy.int32``.
@@ -2073,11 +2116,11 @@ the size of the substitution matrix:
    >>> aligner = Align.PairwiseAligner()
    >>> m = np.eye(5)
    >>> m[0, 1:] = m[1:, 0] = -2
-   >>> m[2, 2] = 3
+   >>> m[2, 2] = 6
    >>> print(m)
    [[ 1. -2. -2. -2. -2.]
     [-2.  1.  0.  0.  0.]
-    [-2.  0.  3.  0.  0.]
+    [-2.  0.  6.  0.  0.]
     [-2.  0.  0.  1.  0.]
     [-2.  0.  0.  0.  1.]]
    >>> aligner.substitution_matrix = m
@@ -2098,7 +2141,7 @@ the size of the substitution matrix:
    0 3 2 - 1
    <BLANKLINE>
    >>> print(alignments.score)
-   2.0
+   5.0
 
 .. _`sec:codon_alignments`:
 

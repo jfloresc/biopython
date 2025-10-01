@@ -32,8 +32,8 @@ zero-based end position. We can therefore manipulate ``start`` and
 For an inclusive end coordinate, we need to use ``end = start + size - 1``.
 A 1-column wide alignment would have ``start == end``.
 """
-import os
 
+import os
 from itertools import islice
 
 try:
@@ -140,10 +140,14 @@ def MafIterator(handle, seq_count=None):
 
     while True:
         # allows parsing of the last bundle without duplicating code
+        line = handle.readline()
+
         try:
-            line = next(handle)
-        except StopIteration:
-            line = ""
+            # Will be in binary mode if called via the indexing code
+            # (which needs the raw offsets for cross platform indexing)
+            line = line.decode("ASCII")
+        except AttributeError:
+            pass
 
         if in_a_bundle:
             if line.startswith("s"):
@@ -276,7 +280,9 @@ class MafIndex:
         # example: Tests/MAF/ucsc_mm9_chr10.maf
         self._maf_file = maf_file
 
-        self._maf_fp = open(self._maf_file)
+        # Opening in bytes mode as want real offsets, not where
+        # Python attempts to hide cross-platform newline differences etc
+        self._maf_fp = open(self._maf_file, "rb")
 
         # if sqlite_file exists, use the existing db, otherwise index the file
         if os.path.isfile(sqlite_file):
@@ -472,7 +478,7 @@ class MafIndex:
         line = self._maf_fp.readline()
 
         while line:
-            if line.startswith("a"):
+            if line.startswith(b"a"):
                 # note the offset
                 offset = self._maf_fp.tell() - len(line)
 
@@ -480,15 +486,15 @@ class MafIndex:
                 while True:
                     line = self._maf_fp.readline()
 
-                    if not line.strip() or line.startswith("a"):
+                    if not line.strip() or line.startswith(b"a"):
                         # Empty line or new alignment record
                         raise ValueError(
                             "Target for indexing (%s) not found in this bundle"
                             % (self._target_seqname,)
                         )
-                    elif line.startswith("s"):
+                    elif line.startswith(b"s"):
                         # s (literal), src (ID), start, size, strand, srcSize, text (sequence)
-                        line_split = line.strip().split()
+                        line_split = line.decode("ASCII").strip().split()
 
                         if line_split[1] == self._target_seqname:
                             start = int(line_split[2])

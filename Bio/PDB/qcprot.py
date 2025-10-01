@@ -21,7 +21,6 @@ Acta Crystallogr A. 2005 Jul;61(Pt 4):478-80. doi: 10.1107/S0108767305015266.
 Epub 2005 Jun 23. PMID: 15973002.
 """
 
-
 import numpy as np
 
 from Bio.PDB.PDBExceptions import PDBException
@@ -118,7 +117,7 @@ def qcp(coords1, coords2, natoms):
 
         delta = f / (f_prime + evalprec)  # avoid division by zero
         mxEigenV = abs(mxEigenV - delta)
-        if (mxEigenV - oldg) < (evalprec * mxEigenV):
+        if abs(mxEigenV - oldg) < (evalprec * mxEigenV):
             break  # convergence
     else:
         print(f"Newton-Rhapson did not converge after {nr_it} iterations")

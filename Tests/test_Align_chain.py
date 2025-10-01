@@ -5,15 +5,17 @@
 """Tests for Align.chain module."""
 import unittest
 from io import StringIO
+from tempfile import NamedTemporaryFile
 
-
-from Bio.Align import Alignment
-from Bio.Seq import Seq, reverse_complement
-from Bio.SeqRecord import SeqRecord
-from Bio.SeqFeature import SimpleLocation, ExactPosition, CompoundLocation
-from Bio import SeqIO
 from Bio import Align
-
+from Bio import SeqIO
+from Bio.Align import Alignment
+from Bio.Seq import reverse_complement
+from Bio.Seq import Seq
+from Bio.SeqFeature import CompoundLocation
+from Bio.SeqFeature import ExactPosition
+from Bio.SeqFeature import SimpleLocation
+from Bio.SeqRecord import SeqRecord
 
 try:
     import numpy as np
@@ -44,22 +46,6 @@ class TestAlign_dna_rna(unittest.TestCase):
         self.dna = data
         records = SeqIO.parse("Blat/rna.fa", "fasta")
         self.rna = {record.id: record.seq for record in records}
-
-    def test_reading(self):
-        """Test parsing dna_rna.chain."""
-        path = "Blat/dna_rna.chain"
-        alignments = Align.parse(path, "chain")
-        self.check_alignments(alignments)
-        alignments = iter(alignments)
-        self.check_alignments(alignments)
-        with Align.parse(path, "chain") as alignments:
-            self.check_alignments(alignments)
-        with self.assertRaises(AttributeError):
-            alignments._stream
-        with Align.parse(path, "chain") as alignments:
-            pass
-        with self.assertRaises(AttributeError):
-            alignments._stream
 
     def check_alignments(self, alignments):
         alignment = next(alignments)
@@ -231,6 +217,58 @@ chain 176 chr3 198295559 + 42530895 42532606 NR_046654.1 181 - 0 181 1
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (181 aligned letters; 175 identities; 6 mismatches; 1530 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 181:
+        identities = 175,
+        mismatches = 6.
+    gaps = 1530:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 1530:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 1530:
+                open_internal_deletions = 2,
+                extend_internal_deletions = 1528;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 1530)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 1530)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 1530)
+        self.assertEqual(counts.gaps, 1530)
+        self.assertEqual(counts.aligned, 181)
+        self.assertEqual(counts.identities, 175)
+        self.assertEqual(counts.mismatches, 6)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 1714))
         self.assertEqual(len(alignment), 2)
@@ -404,6 +442,58 @@ chain 170 chr3 198295559 + 42530895 42532606 NR_046654.1_modified 190 - 5 187 2
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (179 aligned letters; 172 identities; 7 mismatches; 1535 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 179:
+        identities = 172,
+        mismatches = 7.
+    gaps = 1535:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 1535:
+            internal_insertions = 3:
+                open_internal_insertions = 1,
+                extend_internal_insertions = 2;
+            internal_deletions = 1532:
+                open_internal_deletions = 3,
+                extend_internal_deletions = 1529;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 3)
+        self.assertEqual(counts.internal_deletions, 1532)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 1535)
+        self.assertEqual(counts.insertions, 3)
+        self.assertEqual(counts.deletions, 1532)
+        self.assertEqual(counts.gaps, 1535)
+        self.assertEqual(counts.aligned, 179)
+        self.assertEqual(counts.identities, 172)
+        self.assertEqual(counts.mismatches, 7)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 5407))
         self.assertEqual(len(alignment), 2)
@@ -820,6 +910,58 @@ chain 182 chr3 198295559 + 48663767 48669174 NR_111921.1 216 + 0 204 3
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (204 aligned letters; 165 identities; 39 mismatches; 5203 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 204:
+        identities = 165,
+        mismatches = 39.
+    gaps = 5203:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 5203:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 5203:
+                open_internal_deletions = 2,
+                extend_internal_deletions = 5201;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 5203)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 5203)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 5203)
+        self.assertEqual(counts.gaps, 5203)
+        self.assertEqual(counts.aligned, 204)
+        self.assertEqual(counts.identities, 165)
+        self.assertEqual(counts.mismatches, 39)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 5409))
         self.assertEqual(len(alignment), 2)
@@ -1241,7 +1383,82 @@ chain 175 chr3 198295559 + 48663767 48669174 NR_111921.1_modified 220 + 3 208 4
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (203 aligned letters; 162 identities; 41 mismatches; 5206 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 203:
+        identities = 162,
+        mismatches = 41.
+    gaps = 5206:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 5206:
+            internal_insertions = 2:
+                open_internal_insertions = 1,
+                extend_internal_insertions = 1;
+            internal_deletions = 5204:
+                open_internal_deletions = 3,
+                extend_internal_deletions = 5201;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 2)
+        self.assertEqual(counts.internal_deletions, 5204)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 5206)
+        self.assertEqual(counts.insertions, 2)
+        self.assertEqual(counts.deletions, 5204)
+        self.assertEqual(counts.gaps, 5206)
+        self.assertEqual(counts.aligned, 203)
+        self.assertEqual(counts.identities, 162)
+        self.assertEqual(counts.mismatches, 41)
         self.assertRaises(StopIteration, next, alignments)
+
+    def test_reading(self):
+        """Test parsing dna_rna.chain."""
+        path = "Blat/dna_rna.chain"
+        alignments = Align.parse(path, "chain")
+        self.check_alignments(alignments)
+        alignments = iter(alignments)
+        self.check_alignments(alignments)
+        with Align.parse(path, "chain") as alignments:
+            self.check_alignments(alignments)
+        with self.assertRaises(AttributeError):
+            alignments._stream
+        with Align.parse(path, "chain") as alignments:
+            pass
+        with self.assertRaises(AttributeError):
+            alignments._stream
+        with open(path) as stream:
+            data = stream.read()
+        stream = NamedTemporaryFile("w+t")
+        stream.write(data)
+        stream.seek(0)
+        alignments = Align.parse(stream, "chain")
+        self.check_alignments(alignments)
 
     def test_writing(self):
         """Test writing the alignments in dna_rna.chain."""
@@ -1305,6 +1522,56 @@ chain 16 chr4 191154276 + 61646095 61646111 hg18_dna 33 + 11 27 1
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (16 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 16:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 16)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 33))
         self.assertEqual(len(alignment), 2)
@@ -1339,6 +1606,56 @@ chain 33 chr1 249250621 + 10271783 10271816 hg18_dna 33 + 0 33 2
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (33 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 33:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 33)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 17))
         self.assertEqual(len(alignment), 2)
@@ -1373,6 +1690,56 @@ chain 17 chr2 243199373 + 53575980 53575997 hg18_dna 33 - 8 25 3
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (17 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 17:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 17)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 41))
         self.assertEqual(len(alignment), 2)
@@ -1407,6 +1774,56 @@ chain 35 chr9 141213431 + 85737865 85737906 hg19_dna 50 + 9 50 4
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (41 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 41:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 41)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 41))
         self.assertEqual(len(alignment), 2)
@@ -1441,6 +1858,56 @@ chain 41 chr8 146364022 + 95160479 95160520 hg19_dna 50 + 8 49 5
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (41 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 41:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 41)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 36))
         self.assertEqual(len(alignment), 2)
@@ -1475,6 +1942,56 @@ chain 30 chr22 51304566 + 42144400 42144436 hg19_dna 50 + 11 47 6
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (36 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 36:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 36)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 48))
         self.assertEqual(len(alignment), 2)
@@ -1510,6 +2027,56 @@ chain 41 chr2 243199373 + 183925984 183926028 hg19_dna 50 + 1 49 7
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (44 aligned letters; 0 identities; 0 mismatches; 4 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 44:
+        identities = 0,
+        mismatches = 0.
+    gaps = 4:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 4:
+            internal_insertions = 4:
+                open_internal_insertions = 1,
+                extend_internal_insertions = 3;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 4)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 4)
+        self.assertEqual(counts.insertions, 4)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 4)
+        self.assertEqual(counts.aligned, 44)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 170))
         self.assertEqual(len(alignment), 2)
@@ -1553,6 +2120,56 @@ chain 31 chr19 59128983 + 35483340 35483510 hg19_dna 50 + 10 46 8
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (36 aligned letters; 0 identities; 0 mismatches; 134 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 36:
+        identities = 0,
+        mismatches = 0.
+    gaps = 134:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 134:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 134:
+                open_internal_deletions = 1,
+                extend_internal_deletions = 133;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 134)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 134)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 134)
+        self.assertEqual(counts.gaps, 134)
+        self.assertEqual(counts.aligned, 36)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 39))
         self.assertEqual(len(alignment), 2)
@@ -1587,6 +2204,56 @@ chain 39 chr18 78077248 + 23891310 23891349 hg19_dna 50 + 10 49 9
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (39 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 39:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 39)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 28))
         self.assertEqual(len(alignment), 2)
@@ -1621,6 +2288,56 @@ chain 26 chr18 78077248 + 43252217 43252245 hg19_dna 50 + 21 49 10
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (28 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 28:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 28)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 54))
         self.assertEqual(len(alignment), 2)
@@ -1660,6 +2377,56 @@ chain 41 chr13 115169878 + 52759147 52759198 hg19_dna 50 + 1 49 11
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (45 aligned letters; 0 identities; 0 mismatches; 9 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 45:
+        identities = 0,
+        mismatches = 0.
+    gaps = 9:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 9:
+            internal_insertions = 3:
+                open_internal_insertions = 1,
+                extend_internal_insertions = 2;
+            internal_deletions = 6:
+                open_internal_deletions = 1,
+                extend_internal_deletions = 5;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 3)
+        self.assertEqual(counts.internal_deletions, 6)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 9)
+        self.assertEqual(counts.insertions, 3)
+        self.assertEqual(counts.deletions, 6)
+        self.assertEqual(counts.gaps, 9)
+        self.assertEqual(counts.aligned, 45)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 50))
         self.assertEqual(len(alignment), 2)
@@ -1694,6 +2461,56 @@ chain 50 chr1 249250621 + 1207056 1207106 hg19_dna 50 + 0 50 12
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (50 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 50:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 50)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 34))
         self.assertEqual(len(alignment), 2)
@@ -1728,6 +2545,56 @@ chain 28 chr1 249250621 + 61700837 61700871 hg19_dna 50 + 1 35 13
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (34 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 34:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 34)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 44))
         self.assertEqual(len(alignment), 2)
@@ -1760,6 +2627,56 @@ hg19_dna         49 ??????????------????????????????????????????       11
 28	0	0	0	1	10	1	6	-	hg19_dna	50	11	49	chr4	191154276	37558157	37558191	2	10,18,	1,21,	37558157,37558173,
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (28 aligned letters; 0 identities; 0 mismatches; 16 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 28:
+        identities = 0,
+        mismatches = 0.
+    gaps = 16:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 16:
+            internal_insertions = 10:
+                open_internal_insertions = 1,
+                extend_internal_insertions = 9;
+            internal_deletions = 6:
+                open_internal_deletions = 1,
+                extend_internal_deletions = 5;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 10)
+        self.assertEqual(counts.internal_deletions, 6)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 16)
+        self.assertEqual(counts.insertions, 10)
+        self.assertEqual(counts.deletions, 6)
+        self.assertEqual(counts.gaps, 16)
+        self.assertEqual(counts.aligned, 28)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 37))
         self.assertEqual(len(alignment), 2)
@@ -1794,6 +2711,56 @@ chain 33 chr22 51304566 + 48997405 48997442 hg19_dna 50 - 1 38 15
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (37 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 37:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 37)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 36))
         self.assertEqual(len(alignment), 2)
@@ -1828,6 +2795,56 @@ chain 34 chr2 243199373 + 120641740 120641776 hg19_dna 50 - 1 37 16
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (36 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 36:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 36)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 39))
         self.assertEqual(len(alignment), 2)
@@ -1862,6 +2879,56 @@ chain 39 chr19 59128983 + 54017130 54017169 hg19_dna 50 - 1 40 17
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (39 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 39:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 39)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 39))
         self.assertEqual(len(alignment), 2)
@@ -1896,6 +2963,56 @@ chain 33 chr19 59128983 + 553742 553781 hg19_dna 50 - 1 40 18
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (39 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 39:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 39)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 36))
         self.assertEqual(len(alignment), 2)
@@ -1930,6 +3047,56 @@ chain 30 chr10 135534747 + 99388555 99388591 hg19_dna 50 - 1 37 19
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (36 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 36:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 36)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 25))
         self.assertEqual(len(alignment), 2)
@@ -1964,6 +3131,56 @@ chain 23 chr10 135534747 + 112178171 112178196 hg19_dna 50 - 15 40 20
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (25 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 25:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 25)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 36))
         self.assertEqual(len(alignment), 2)
@@ -1998,6 +3215,56 @@ chain 34 chr1 249250621 + 39368490 39368526 hg19_dna 50 - 1 37 21
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (36 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 36:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 36)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 34))
         self.assertEqual(len(alignment), 2)
@@ -2032,6 +3299,56 @@ chain 32 chr1 249250621 + 220325687 220325721 hg19_dna 50 - 3 37 22
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (34 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 34:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 34)
         self.assertRaises(StopIteration, next, alignments)
 
     def test_writing_chain_34_001(self):
@@ -2110,6 +3427,56 @@ chain 16 chr4 191154276 + 61646095 61646111 hg18_dna 33 + 11 27 1
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (16 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 16:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 16)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 33))
         self.assertEqual(len(alignment), 2)
@@ -2144,6 +3511,56 @@ chain 33 chr1 249250621 + 10271783 10271816 hg18_dna 33 + 0 33 2
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (33 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 33:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 33)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 17))
         self.assertEqual(len(alignment), 2)
@@ -2178,6 +3595,56 @@ chain 17 chr2 243199373 + 53575980 53575997 hg18_dna 33 - 8 25 3
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (17 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 17:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 17)
         self.assertRaises(StopIteration, next, alignments)
 
     def test_writing_psl_34_003(self):
@@ -2235,6 +3702,56 @@ chain 35 chr9 141213431 + 85737865 85737906 hg19_dna 50 + 9 50 1
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (41 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 41:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 41)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 41))
         self.assertEqual(len(alignment), 2)
@@ -2269,6 +3786,56 @@ chain 41 chr8 146364022 + 95160479 95160520 hg19_dna 50 + 8 49 2
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (41 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 41:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 41)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 36))
         self.assertEqual(len(alignment), 2)
@@ -2303,6 +3870,56 @@ chain 30 chr22 51304566 + 42144400 42144436 hg19_dna 50 + 11 47 3
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (36 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 36:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 36)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 48))
         self.assertEqual(len(alignment), 2)
@@ -2338,6 +3955,56 @@ chain 41 chr2 243199373 + 183925984 183926028 hg19_dna 50 + 1 49 4
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (44 aligned letters; 0 identities; 0 mismatches; 4 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 44:
+        identities = 0,
+        mismatches = 0.
+    gaps = 4:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 4:
+            internal_insertions = 4:
+                open_internal_insertions = 1,
+                extend_internal_insertions = 3;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 4)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 4)
+        self.assertEqual(counts.insertions, 4)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 4)
+        self.assertEqual(counts.aligned, 44)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 170))
         self.assertEqual(len(alignment), 2)
@@ -2381,6 +4048,56 @@ chain 31 chr19 59128983 + 35483340 35483510 hg19_dna 50 + 10 46 5
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (36 aligned letters; 0 identities; 0 mismatches; 134 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 36:
+        identities = 0,
+        mismatches = 0.
+    gaps = 134:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 134:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 134:
+                open_internal_deletions = 1,
+                extend_internal_deletions = 133;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 134)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 134)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 134)
+        self.assertEqual(counts.gaps, 134)
+        self.assertEqual(counts.aligned, 36)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 39))
         self.assertEqual(len(alignment), 2)
@@ -2415,6 +4132,56 @@ chain 39 chr18 78077248 + 23891310 23891349 hg19_dna 50 + 10 49 6
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (39 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 39:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 39)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 28))
         self.assertEqual(len(alignment), 2)
@@ -2449,6 +4216,56 @@ chain 26 chr18 78077248 + 43252217 43252245 hg19_dna 50 + 21 49 7
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (28 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 28:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 28)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 54))
         self.assertEqual(len(alignment), 2)
@@ -2488,6 +4305,56 @@ chain 41 chr13 115169878 + 52759147 52759198 hg19_dna 50 + 1 49 8
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (45 aligned letters; 0 identities; 0 mismatches; 9 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 45:
+        identities = 0,
+        mismatches = 0.
+    gaps = 9:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 9:
+            internal_insertions = 3:
+                open_internal_insertions = 1,
+                extend_internal_insertions = 2;
+            internal_deletions = 6:
+                open_internal_deletions = 1,
+                extend_internal_deletions = 5;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 3)
+        self.assertEqual(counts.internal_deletions, 6)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 9)
+        self.assertEqual(counts.insertions, 3)
+        self.assertEqual(counts.deletions, 6)
+        self.assertEqual(counts.gaps, 9)
+        self.assertEqual(counts.aligned, 45)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 50))
         self.assertEqual(len(alignment), 2)
@@ -2522,6 +4389,56 @@ chain 50 chr1 249250621 + 1207056 1207106 hg19_dna 50 + 0 50 9
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (50 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 50:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 50)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 34))
         self.assertEqual(len(alignment), 2)
@@ -2556,6 +4473,56 @@ chain 28 chr1 249250621 + 61700837 61700871 hg19_dna 50 + 1 35 10
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (34 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 34:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 34)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 44))
         self.assertEqual(len(alignment), 2)
@@ -2591,6 +4558,56 @@ chain 26 chr4 191154276 + 37558157 37558191 hg19_dna 50 - 1 39 11
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (28 aligned letters; 0 identities; 0 mismatches; 16 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 28:
+        identities = 0,
+        mismatches = 0.
+    gaps = 16:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 16:
+            internal_insertions = 10:
+                open_internal_insertions = 1,
+                extend_internal_insertions = 9;
+            internal_deletions = 6:
+                open_internal_deletions = 1,
+                extend_internal_deletions = 5;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 10)
+        self.assertEqual(counts.internal_deletions, 6)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 16)
+        self.assertEqual(counts.insertions, 10)
+        self.assertEqual(counts.deletions, 6)
+        self.assertEqual(counts.gaps, 16)
+        self.assertEqual(counts.aligned, 28)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 37))
         self.assertEqual(len(alignment), 2)
@@ -2625,6 +4642,56 @@ chain 33 chr22 51304566 + 48997405 48997442 hg19_dna 50 - 1 38 12
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (37 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 37:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 37)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 36))
         self.assertEqual(len(alignment), 2)
@@ -2659,6 +4726,56 @@ chain 34 chr2 243199373 + 120641740 120641776 hg19_dna 50 - 1 37 13
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (36 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 36:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 36)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 39))
         self.assertEqual(len(alignment), 2)
@@ -2693,6 +4810,56 @@ chain 39 chr19 59128983 + 54017130 54017169 hg19_dna 50 - 1 40 14
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (39 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 39:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 39)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 39))
         self.assertEqual(len(alignment), 2)
@@ -2727,6 +4894,56 @@ chain 33 chr19 59128983 + 553742 553781 hg19_dna 50 - 1 40 15
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (39 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 39:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 39)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 36))
         self.assertEqual(len(alignment), 2)
@@ -2761,6 +4978,56 @@ chain 30 chr10 135534747 + 99388555 99388591 hg19_dna 50 - 1 37 16
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (36 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 36:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 36)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 25))
         self.assertEqual(len(alignment), 2)
@@ -2795,6 +5062,56 @@ chain 23 chr10 135534747 + 112178171 112178196 hg19_dna 50 - 15 40 17
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (25 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 25:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 25)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 36))
         self.assertEqual(len(alignment), 2)
@@ -2829,6 +5146,56 @@ chain 34 chr1 249250621 + 39368490 39368526 hg19_dna 50 - 1 37 18
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (36 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 36:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 36)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 34))
         self.assertEqual(len(alignment), 2)
@@ -2863,6 +5230,56 @@ chain 32 chr1 249250621 + 220325687 220325721 hg19_dna 50 - 3 37 19
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (34 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 34:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 34)
         self.assertRaises(StopIteration, next, alignments)
 
     def test_writing_psl_34_004(self):
@@ -2922,6 +5339,56 @@ chain 16 chr4 191154276 + 61646095 61646111 hg18_dna 33 + 11 27 1
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (16 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 16:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 16)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 33))
         self.assertEqual(len(alignment), 2)
@@ -2956,6 +5423,56 @@ chain 33 chr1 249250621 + 10271783 10271816 hg18_dna 33 + 0 33 2
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (33 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 33:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 33)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 17))
         self.assertEqual(len(alignment), 2)
@@ -2990,6 +5507,56 @@ chain 17 chr2 243199373 + 53575980 53575997 hg18_dna 33 - 8 25 3
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (17 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 17:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 17)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 41))
         self.assertEqual(len(alignment), 2)
@@ -3024,6 +5591,56 @@ chain 35 chr9 141213431 + 85737865 85737906 hg19_dna 50 + 9 50 4
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (41 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 41:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 41)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 41))
         self.assertEqual(len(alignment), 2)
@@ -3058,6 +5675,56 @@ chain 41 chr8 146364022 + 95160479 95160520 hg19_dna 50 + 8 49 5
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (41 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 41:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 41)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 36))
         self.assertEqual(len(alignment), 2)
@@ -3092,6 +5759,56 @@ chain 30 chr22 51304566 + 42144400 42144436 hg19_dna 50 + 11 47 6
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (36 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 36:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 36)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 48))
         self.assertEqual(len(alignment), 2)
@@ -3127,6 +5844,56 @@ chain 41 chr2 243199373 + 183925984 183926028 hg19_dna 50 + 1 49 7
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (44 aligned letters; 0 identities; 0 mismatches; 4 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 44:
+        identities = 0,
+        mismatches = 0.
+    gaps = 4:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 4:
+            internal_insertions = 4:
+                open_internal_insertions = 1,
+                extend_internal_insertions = 3;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 4)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 4)
+        self.assertEqual(counts.insertions, 4)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 4)
+        self.assertEqual(counts.aligned, 44)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 170))
         self.assertEqual(len(alignment), 2)
@@ -3170,6 +5937,56 @@ chain 31 chr19 59128983 + 35483340 35483510 hg19_dna 50 + 10 46 8
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (36 aligned letters; 0 identities; 0 mismatches; 134 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 36:
+        identities = 0,
+        mismatches = 0.
+    gaps = 134:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 134:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 134:
+                open_internal_deletions = 1,
+                extend_internal_deletions = 133;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 134)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 134)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 134)
+        self.assertEqual(counts.gaps, 134)
+        self.assertEqual(counts.aligned, 36)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 39))
         self.assertEqual(len(alignment), 2)
@@ -3204,6 +6021,56 @@ chain 39 chr18 78077248 + 23891310 23891349 hg19_dna 50 + 10 49 9
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (39 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 39:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 39)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 28))
         self.assertEqual(len(alignment), 2)
@@ -3238,6 +6105,56 @@ chain 26 chr18 78077248 + 43252217 43252245 hg19_dna 50 + 21 49 10
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (28 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 28:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 28)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 54))
         self.assertEqual(len(alignment), 2)
@@ -3277,6 +6194,56 @@ chain 41 chr13 115169878 + 52759147 52759198 hg19_dna 50 + 1 49 11
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (45 aligned letters; 0 identities; 0 mismatches; 9 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 45:
+        identities = 0,
+        mismatches = 0.
+    gaps = 9:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 9:
+            internal_insertions = 3:
+                open_internal_insertions = 1,
+                extend_internal_insertions = 2;
+            internal_deletions = 6:
+                open_internal_deletions = 1,
+                extend_internal_deletions = 5;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 3)
+        self.assertEqual(counts.internal_deletions, 6)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 9)
+        self.assertEqual(counts.insertions, 3)
+        self.assertEqual(counts.deletions, 6)
+        self.assertEqual(counts.gaps, 9)
+        self.assertEqual(counts.aligned, 45)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 50))
         self.assertEqual(len(alignment), 2)
@@ -3311,6 +6278,56 @@ chain 50 chr1 249250621 + 1207056 1207106 hg19_dna 50 + 0 50 12
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (50 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 50:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 50)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 34))
         self.assertEqual(len(alignment), 2)
@@ -3345,6 +6362,56 @@ chain 28 chr1 249250621 + 61700837 61700871 hg19_dna 50 + 1 35 13
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (34 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 34:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 34)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 44))
         self.assertEqual(len(alignment), 2)
@@ -3380,6 +6447,56 @@ chain 26 chr4 191154276 + 37558157 37558191 hg19_dna 50 - 1 39 14
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (28 aligned letters; 0 identities; 0 mismatches; 16 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 28:
+        identities = 0,
+        mismatches = 0.
+    gaps = 16:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 16:
+            internal_insertions = 10:
+                open_internal_insertions = 1,
+                extend_internal_insertions = 9;
+            internal_deletions = 6:
+                open_internal_deletions = 1,
+                extend_internal_deletions = 5;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 10)
+        self.assertEqual(counts.internal_deletions, 6)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 16)
+        self.assertEqual(counts.insertions, 10)
+        self.assertEqual(counts.deletions, 6)
+        self.assertEqual(counts.gaps, 16)
+        self.assertEqual(counts.aligned, 28)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 37))
         self.assertEqual(len(alignment), 2)
@@ -3414,6 +6531,56 @@ chain 33 chr22 51304566 + 48997405 48997442 hg19_dna 50 - 1 38 15
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (37 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 37:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 37)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 36))
         self.assertEqual(len(alignment), 2)
@@ -3448,6 +6615,56 @@ chain 34 chr2 243199373 + 120641740 120641776 hg19_dna 50 - 1 37 16
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (36 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 36:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 36)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 39))
         self.assertEqual(len(alignment), 2)
@@ -3482,6 +6699,56 @@ chain 39 chr19 59128983 + 54017130 54017169 hg19_dna 50 - 1 40 17
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (39 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 39:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 39)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 39))
         self.assertEqual(len(alignment), 2)
@@ -3516,6 +6783,56 @@ chain 33 chr19 59128983 + 553742 553781 hg19_dna 50 - 1 40 18
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (39 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 39:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 39)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 36))
         self.assertEqual(len(alignment), 2)
@@ -3550,6 +6867,56 @@ chain 30 chr10 135534747 + 99388555 99388591 hg19_dna 50 - 1 37 19
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (36 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 36:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 36)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 25))
         self.assertEqual(len(alignment), 2)
@@ -3584,6 +6951,56 @@ chain 23 chr10 135534747 + 112178171 112178196 hg19_dna 50 - 15 40 20
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (25 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 25:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 25)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 36))
         self.assertEqual(len(alignment), 2)
@@ -3618,6 +7035,56 @@ chain 34 chr1 249250621 + 39368490 39368526 hg19_dna 50 - 1 37 21
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (36 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 36:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 36)
         alignment = next(alignments)
         self.assertEqual(alignment.shape, (2, 34))
         self.assertEqual(len(alignment), 2)
@@ -3652,6 +7119,56 @@ chain 32 chr1 249250621 + 220325687 220325721 hg19_dna 50 - 3 37 22
 
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (34 aligned letters; 0 identities; 0 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 34:
+        identities = 0,
+        mismatches = 0.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 34)
         self.assertRaises(StopIteration, next, alignments)
 
     def test_writing_psl_34_005(self):

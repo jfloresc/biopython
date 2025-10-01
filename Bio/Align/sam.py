@@ -21,14 +21,17 @@ Coordinates in the SAM format are defined in terms of one-based start
 positions; the parser converts these to zero-based coordinates to be consistent
 with Python and other alignment formats.
 """
-from itertools import chain
+
 import copy
+from itertools import chain
 
 import numpy as np
 
 from Bio.Align import Alignment
 from Bio.Align import interfaces
-from Bio.Seq import Seq, reverse_complement, UndefinedSequenceError
+from Bio.Seq import reverse_complement
+from Bio.Seq import Seq
+from Bio.Seq import UndefinedSequenceError
 from Bio.SeqRecord import SeqRecord
 
 
@@ -154,7 +157,7 @@ class AlignmentWriter(interfaces.AlignmentWriter):
         else:  # mapped to reverse strand
             flag = 16
             query = reverse_complement(query)
-            coordinates = np.array(coordinates)
+            coordinates = np.array(coordinates, np.intp)
             coordinates[:, 1] = qSize - coordinates[:, 1]
             hard_clip_left, hard_clip_right = hard_clip_right, hard_clip_left
         try:
@@ -695,17 +698,26 @@ class AlignmentIterator(interfaces.AlignmentIterator):
                     number = int(number)
                     target += seq[:number]
                 seq = target
-                index = self._target_indices[rname]
-                target = copy.deepcopy(self.targets[index])
-                length = len(target.seq)
+                rname_target = self.targets[self._target_indices[rname]]
+                length = len(rname_target.seq)
                 data = {}
                 index = 0
                 for start, size in zip(starts, sizes):
                     data[start] = seq[index : index + size]
                     index += size
-                target.seq = Seq(data, length=length)
+
+                target = SeqRecord._from_validated(
+                    Seq(data, length=length),
+                    rname_target.id,
+                    rname_target.name,
+                    rname_target.description,
+                    annotations={
+                        key: copy.copy(val)
+                        for key, val in rname_target.annotations.items()
+                    },
+                )
             if coordinates is not None:
-                coordinates = np.array(coordinates).transpose()
+                coordinates = np.array(coordinates, np.intp).transpose()
                 if strand == "-":
                     coordinates[1, :] = query_pos - coordinates[1, :]
             if query == "*":

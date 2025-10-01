@@ -9,38 +9,32 @@
 import re
 from datetime import date
 from io import StringIO
+from typing import Optional
+from typing import TextIO
+from typing import Union
 
 import numpy as np
 
+from Bio import SeqIO
+from Bio.Data.PDBData import protein_letters_1to3
 from Bio.File import as_handle
-from Bio.PDB.StructureBuilder import StructureBuilder
+from Bio.PDB.ic_data import dihedra_primary_defaults
+from Bio.PDB.ic_data import dihedra_secondary_defaults
+from Bio.PDB.ic_data import dihedra_secondary_xoxt_defaults
+from Bio.PDB.ic_data import hedra_defaults
+from Bio.PDB.ic_data import ic_data_backbone
+from Bio.PDB.ic_data import ic_data_sidechains
+from Bio.PDB.internal_coords import AtomKey
+from Bio.PDB.internal_coords import Dihedron
+from Bio.PDB.internal_coords import Edron
+from Bio.PDB.internal_coords import Hedron
+from Bio.PDB.internal_coords import IC_Chain
+from Bio.PDB.internal_coords import IC_Residue
 from Bio.PDB.parse_pdb_header import _parse_pdb_header_list
 from Bio.PDB.PDBExceptions import PDBException
-
-from Bio.Data.PDBData import protein_letters_1to3
-
-from Bio.PDB.internal_coords import (
-    IC_Residue,
-    IC_Chain,
-    Edron,
-    Hedron,
-    Dihedron,
-    AtomKey,
-)
-
-from Bio.PDB.ic_data import (
-    ic_data_backbone,
-    ic_data_sidechains,
-    hedra_defaults,
-    dihedra_primary_defaults,
-    dihedra_secondary_defaults,
-    dihedra_secondary_xoxt_defaults,
-)
-
-from typing import TextIO, Set, List, Tuple, Union, Optional
-from Bio.PDB.Structure import Structure
 from Bio.PDB.Residue import Residue
-from Bio import SeqIO
+from Bio.PDB.Structure import Structure
+from Bio.PDB.StructureBuilder import StructureBuilder
 
 
 # @profile
@@ -178,7 +172,7 @@ def read_PIC(
             ak = akc[akstr] = AtomKey(akstr)
             return ak
 
-    def link_residues(ppr: List[Residue], pr: List[Residue]) -> None:
+    def link_residues(ppr: list[Residue], pr: list[Residue]) -> None:
         """Set next and prev links between i-1 and i-2 residues."""
         for p_r in pr:
             pric = p_r.internal_coord
@@ -199,12 +193,12 @@ def read_PIC(
         ang: str,
         l23: str,
         ric: IC_Residue,
-    ) -> Tuple:
+    ) -> tuple:
         """Create Hedron on current (sbcic) Chain.internal_coord."""
         ek = (akcache(a1), akcache(a2), akcache(a3))
         atmNdx = AtomKey.fields.atm
-        accpt = IC_Residue.accept_atoms
-        if not all(ek[i].akl[atmNdx] in accpt for i in range(3)):
+        accept = IC_Residue.accept_atoms
+        if not all(ek[i].akl[atmNdx] in accept for i in range(3)):
             return
         hl12[ek] = float(l12)
         ha[ek] = float(ang)
@@ -214,7 +208,7 @@ def read_PIC(
         ak_add(ek, ric)
         return ek
 
-    def default_hedron(ek: Tuple, ric: IC_Residue) -> None:
+    def default_hedron(ek: tuple, ric: IC_Residue) -> None:
         """Create Hedron based on same re_class hedra in ref database.
 
         Adds Hedron to current Chain.internal_coord, see ic_data for default
@@ -271,7 +265,7 @@ def read_PIC(
         if verbose:
             print(f" default for {ek}")
 
-    def hedra_check(dk: Tuple, ric: IC_Residue) -> None:
+    def hedra_check(dk: tuple, ric: IC_Residue) -> None:
         """Confirm both hedra present for dihedron key, use default if set."""
         if dk[0:3] not in sbcic.hedra and dk[2::-1] not in sbcic.hedra:
             if defaults:
@@ -286,7 +280,7 @@ def read_PIC(
 
     def process_dihedron(
         a1: str, a2: str, a3: str, a4: str, dangle: str, ric: IC_Residue
-    ) -> Set:
+    ) -> set:
         """Create Dihedron on current Chain.internal_coord."""
         ek = (
             akcache(a1),
@@ -295,8 +289,8 @@ def read_PIC(
             akcache(a4),
         )
         atmNdx = AtomKey.fields.atm
-        accpt = IC_Residue.accept_atoms
-        if not all(ek[i].akl[atmNdx] in accpt for i in range(4)):
+        accept = IC_Residue.accept_atoms
+        if not all(ek[i].akl[atmNdx] in accept for i in range(4)):
             return
         dangle = float(dangle)
         dangle = dangle if (dangle <= 180.0) else dangle - 360.0
@@ -309,7 +303,7 @@ def read_PIC(
         ak_add(ek, ric)
         return ek
 
-    def default_dihedron(ek: List, ric: IC_Residue) -> None:
+    def default_dihedron(ek: list, ric: IC_Residue) -> None:
         """Create Dihedron based on same residue class dihedra in ref database.
 
         Adds Dihedron to current Chain.internal_coord, see ic_data for default
@@ -453,8 +447,8 @@ def read_PIC(
         # This method has some internal functions
 
         # rnext should be set
-        def ake_recurse(akList: List) -> List:
-            """Bulid combinatorics of AtomKey lists."""
+        def ake_recurse(akList: list) -> list:
+            """Build combinatorics of AtomKey lists."""
             car = akList[0]
             if len(akList) > 1:
                 retList = []
@@ -472,7 +466,7 @@ def read_PIC(
                     retList = [[ak] for ak in car]
                     return retList
 
-        def ak_expand(eLst: List) -> List:
+        def ak_expand(eLst: list) -> list:
             """Expand AtomKey list with altlocs, all combinatorics."""
             retList = []
             for edron in eLst:
@@ -549,7 +543,7 @@ def read_PIC(
                 pass  # ignore missing combinatoric of altloc atoms
                 # need more here?
 
-    def ak_add(ek: Tuple, ric: IC_Residue) -> None:
+    def ak_add(ek: tuple, ric: IC_Residue) -> None:
         """Allocate edron key AtomKeys to current residue as appropriate.
 
         A hedron or dihedron may span a backbone amide bond, this routine
@@ -872,8 +866,8 @@ def _wpr(
     pdbid,
     chainid,
     picFlags: int = IC_Residue.picFlagsDefault,
-    hCut: Optional[Union[float, None]] = None,
-    pCut: Optional[Union[float, None]] = None,
+    hCut: float | None = None,
+    pCut: float | None = None,
 ):
     if entity.internal_coord:
         if not chainid or not pdbid:
@@ -954,8 +948,8 @@ def write_PIC(
     pdbid=None,
     chainid=None,
     picFlags: int = IC_Residue.picFlagsDefault,
-    hCut: Optional[Union[float, None]] = None,
-    pCut: Optional[Union[float, None]] = None,
+    hCut: float | None = None,
+    pCut: float | None = None,
 ):
     """Write Protein Internal Coordinates (PIC) to file.
 
@@ -1104,9 +1098,9 @@ def write_PIC(
                             hdr.upper(), (dd or ""), (pdbid or "")
                         )
                     )
-                nam = entity.header.get("name", None)
-                if nam:
-                    fp.write("TITLE     " + nam.upper() + "\n")
+                name = entity.header.get("name", None)
+                if name:
+                    fp.write("TITLE     " + name.upper() + "\n")
                 for mdl in entity:
                     write_PIC(
                         mdl,

@@ -6,9 +6,9 @@
 """Tests for Bio.Align.nexus module."""
 import unittest
 from io import StringIO
+from tempfile import NamedTemporaryFile
 
 from Bio import Align
-
 
 try:
     import numpy as np
@@ -60,6 +60,13 @@ class TestNexusReading(unittest.TestCase):
         with self.assertRaises(AttributeError):
             alignments._stream
         self.check_reading_writing(path)
+        with open(path) as stream:
+            data = stream.read()
+        stream = NamedTemporaryFile("w+t")
+        stream.write(data)
+        stream.seek(0)
+        alignments = Align.parse(stream, "nexus")
+        self.check_nexus1(alignments)
 
     def check_nexus1(self, alignments):
         alignment = next(alignments)
@@ -233,6 +240,58 @@ np.array([['A', '-', 'C', '-', 'G', '-', 'T', 'c', 'g', 't', 'g', 't', 'g',
                 # fmt: on
             )
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (862 aligned letters; 256 identities; 606 mismatches; 596 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 862:
+        identities = 256,
+        mismatches = 606.
+    gaps = 596:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 327:
+            internal_insertions = 254:
+                open_internal_insertions = 128,
+                extend_internal_insertions = 126;
+            internal_deletions = 73:
+                open_internal_deletions = 44,
+                extend_internal_deletions = 29;
+        right_gaps = 269:
+            right_insertions = 186:
+                open_right_insertions = 10,
+                extend_right_insertions = 176;
+            right_deletions = 83:
+                open_right_deletions = 5,
+                extend_right_deletions = 78.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 186)
+        self.assertEqual(counts.right_deletions, 83)
+        self.assertEqual(counts.internal_insertions, 254)
+        self.assertEqual(counts.internal_deletions, 73)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 269)
+        self.assertEqual(counts.internal_gaps, 327)
+        self.assertEqual(counts.insertions, 440)
+        self.assertEqual(counts.deletions, 156)
+        self.assertEqual(counts.gaps, 596)
+        self.assertEqual(counts.aligned, 862)
+        self.assertEqual(counts.identities, 256)
+        self.assertEqual(counts.mismatches, 606)
         with self.assertRaises(StopIteration):
             next(alignments)
 
@@ -286,6 +345,58 @@ np.array([['A', 'A', 'A', 'A', 'A', 'G', 'G', 'C', 'A', 'T', 'T', 'G', 'T',
                 # fmt: on
             )
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (22 aligned letters; 13 identities; 9 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 22:
+        identities = 13,
+        mismatches = 9.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 22)
+        self.assertEqual(counts.identities, 13)
+        self.assertEqual(counts.mismatches, 9)
         with self.assertRaises(StopIteration):
             next(alignments)
         self.check_reading_writing(path)

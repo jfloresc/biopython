@@ -14,7 +14,10 @@
 import unittest
 
 try:
-    from numpy import array, dot, sqrt, argsort
+    from numpy import argsort
+    from numpy import array
+    from numpy import dot
+    from numpy import sqrt
     from numpy.random import random
 except ImportError:
     from Bio import MissingExternalDependencyError
@@ -67,7 +70,6 @@ class KDTreeTest(unittest.TestCase):
     nr_points = 5000  # number of points used in test
     bucket_size = 5  # number of points per tree node
     radius = 0.05  # radius of search (typically 0.05 or so)
-    query_radius = 10  # radius of search
 
     def test_KDTree_exceptions(self):
         bucket_size = self.bucket_size

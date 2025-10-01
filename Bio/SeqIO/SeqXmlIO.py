@@ -13,6 +13,7 @@ SeqXML is a lightweight XML format which is supposed be an alternative for
 FASTA files. For more Information see http://www.seqXML.org and Schmitt et al
 (2011), https://doi.org/10.1093/bib/bbr025
 """
+
 from xml import sax
 from xml.sax import handler
 from xml.sax.saxutils import XMLGenerator
@@ -440,6 +441,9 @@ class SeqXmlIterator(SequenceIterator):
     method calls.
     """
 
+    modes = "b"
+
+    # Small block size can be a problem with libexpat 2.6.0 onwards:
     BLOCK = 1024
 
     def __init__(self, stream_or_path, namespace=None):
@@ -449,20 +453,17 @@ class SeqXmlIterator(SequenceIterator):
         # if the text handle was opened with a different encoding than the
         # one specified in the XML file. With a binary handle, the correct
         # encoding is picked up by the parser from the XML file.
-        self.parser = sax.make_parser()
+        super().__init__(stream_or_path, fmt="SeqXML")
+        stream = self.stream
+        parser = sax.make_parser()
         content_handler = ContentHandler()
-        self.parser.setContentHandler(content_handler)
-        self.parser.setFeature(handler.feature_namespaces, True)
-        super().__init__(stream_or_path, mode="b", fmt="SeqXML")
-
-    def parse(self, handle):
-        """Start parsing the file, and return a SeqRecord generator."""
-        parser = self.parser
-        content_handler = parser.getContentHandler()
+        parser.setContentHandler(content_handler)
+        parser.setFeature(handler.feature_namespaces, True)
+        self.parser = parser
         BLOCK = self.BLOCK
         while True:
             # Read in another block of the file...
-            text = handle.read(BLOCK)
+            text = stream.read(BLOCK)
             if not text:
                 if content_handler.startElementNS is None:
                     raise ValueError("Empty file.")
@@ -477,30 +478,38 @@ class SeqXmlIterator(SequenceIterator):
         self.sourceVersion = content_handler.sourceVersion
         self.ncbiTaxID = content_handler.ncbiTaxID
         self.speciesName = content_handler.speciesName
-        records = self.iterate(handle)
-        return records
 
-    def iterate(self, handle):
-        """Iterate over the records in the XML file."""
+    def __next__(self):
+        """Return the next entry."""
         parser = self.parser
         content_handler = parser.getContentHandler()
         records = content_handler.records
+        if records is None:
+            raise StopIteration
+        stream = self.stream
         BLOCK = self.BLOCK
         while True:
             if len(records) > 1:
                 # Then at least the first record is finished
                 record = records.pop(0)
-                yield record
+                return record
             # Read in another block of the file...
-            text = handle.read(BLOCK)
+            text = stream.read(BLOCK)
             if not text:
+                # Closing the parser ensures that all XML data fed
+                # into it are processed
+                parser.close()
                 break
             parser.feed(text)
         # We have reached the end of the XML file;
         # send out the remaining records
-        yield from records
-        records.clear()
-        parser.close()
+        try:
+            record = records.pop(0)
+        except IndexError:
+            self.records = None
+            raise StopIteration
+        else:
+            return record
 
 
 class SeqXmlWriter(SequenceWriter):
@@ -510,6 +519,8 @@ class SeqXmlWriter(SequenceWriter):
     the molecule type is required to contain the term "DNA", "RNA", or
     "protein".
     """
+
+    modes = "b"
 
     def __init__(
         self, target, source=None, source_version=None, species=None, ncbiTaxId=None
@@ -527,7 +538,7 @@ class SeqXmlWriter(SequenceWriter):
          - ncbiTaxId - The NCBI taxonomy identifier of the species of origin.
 
         """
-        super().__init__(target, "wb")
+        super().__init__(target)
         handle = self.handle
         self.xml_generator = XMLGenerator(handle, "utf-8")
         self.xml_generator.startDocument()
@@ -535,6 +546,16 @@ class SeqXmlWriter(SequenceWriter):
         self.source_version = source_version
         self.species = species
         self.ncbiTaxId = ncbiTaxId
+
+    def write_records(self, records):
+        """Write records to the output file, and return the number of records.
+
+        records - A list or iterator returning SeqRecord objects
+        """
+        self.write_header()
+        count = super().write_records(records)
+        self.write_footer()
+        return count
 
     def write_header(self):
         """Write root node with document metadata."""

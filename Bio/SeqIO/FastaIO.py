@@ -12,18 +12,19 @@
 
 You are expected to use this module via the Bio.SeqIO functions.
 """
-import warnings
-
-from typing import Callable, Optional, Tuple
 
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
+from Bio import BiopythonDeprecationWarning
+
 
 from .Interfaces import _clean
 from .Interfaces import _get_seq_string
+from .Interfaces import _TextIOSource
 from .Interfaces import SequenceIterator
 from .Interfaces import SequenceWriter
-from .Interfaces import _TextIOSource
+
+import warnings
 
 
 def SimpleFastaParser(handle):
@@ -140,7 +141,9 @@ def FastaTwoLineParser(handle):
 
 
 class FastaIterator(SequenceIterator):
-    """Parser for Fasta files."""
+    """Parser for plain Fasta files without comments."""
+
+    modes = "t"
 
     def __init__(
         self,
@@ -152,6 +155,9 @@ class FastaIterator(SequenceIterator):
         Arguments:
          - source - input stream opened in text mode, or a path to a file
          - alphabet - optional alphabet, not used. Leave as None.
+
+        This parser expects a plain Fasta format without comments or header
+        lines.
 
         By default this will act like calling Bio.SeqIO.parse(handle, "fasta")
         with no custom handling of the title lines:
@@ -187,29 +193,81 @@ class FastaIterator(SequenceIterator):
         """
         if alphabet is not None:
             raise ValueError("The alphabet argument is no longer supported")
-        super().__init__(source, mode="t", fmt="Fasta")
+        super().__init__(source, fmt="Fasta")
+        line = self.stream.readline()
+        if not line:
+            line = None
+        else:
+            if not line.startswith(">"):
+                warnings.warn(
+                    "Previously, the FASTA parser silently ignored comments at the "
+                    "beginning of the FASTA file (before the first sequence).\n"
+                    "\n"
+                    "Nowadays, the FASTA file format is usually understood not to "
+                    "have any such comments, and most software packages do not allow "
+                    "them. Therefore, the use of comments at the beginning of a FASTA "
+                    "file is now deprecated in Biopython.\n"
+                    "\n"
+                    "In a future Biopython release, this deprecation warning will be "
+                    "replaced by a ValueError. To avoid this, there are three "
+                    "options:\n"
+                    "\n"
+                    "(1) Modify your FASTA file to remove such comments at the "
+                    "beginning of the file.\n"
+                    "\n"
+                    "(2) Use SeqIO.parse with the 'fasta-pearson' format instead of "
+                    "'fasta'. This format is consistent with the FASTA format defined "
+                    "by William Pearson's FASTA aligner software. Thie format allows "
+                    "for comments before the first sequence; lines starting with the "
+                    "';' character anywhere in the file are also regarded as comment "
+                    "lines and are ignored.\n"
+                    "\n"
+                    "(3) Use the 'fasta-blast' format. This format regards any lines "
+                    "starting with '!', '#', or ';' as comment lines. The "
+                    "'fasta-blast' format may be safer than the 'fasta-pearson' "
+                    "format, as it explicitly indicates which lines are comments. ",
+                    BiopythonDeprecationWarning,
+                )
+                for line in self.stream:
+                    if line.startswith(">"):
+                        break
+                else:
+                    line = None
+        self._line = line
 
-    def parse(self, handle):
-        """Start parsing the file, and return a SeqRecord generator."""
-        records = self.iterate(handle)
-        return records
-
-    def iterate(self, handle):
-        """Parse the file and generate SeqRecord objects."""
-        for title, sequence in SimpleFastaParser(handle):
-            try:
-                first_word = title.split(None, 1)[0]
-            except IndexError:
-                assert not title, repr(title)
-                # Should we use SeqRecord default for no ID?
-                first_word = ""
-            yield SeqRecord(
-                Seq(sequence), id=first_word, name=first_word, description=title
-            )
+    def __next__(self):
+        line = self._line
+        if line is None:
+            raise StopIteration
+        title = line[1:].rstrip()
+        # Main logic
+        # Note, remove trailing whitespace, and any internal spaces
+        # (and any embedded \r which are possible in mangled files
+        # when not opened in universal read lines mode)
+        lines = []
+        for line in self.stream:
+            if line[0] == ">":
+                break
+            lines.append(line)
+        else:
+            line = None
+        self._line = line
+        sequence = "".join(lines).encode().translate(None, b" \t\r\n")
+        try:
+            first_word = title.split(None, 1)[0]
+        except IndexError:
+            assert not title, repr(title)
+            # Should we use SeqRecord default for no ID?
+            first_word = ""
+        return SeqRecord._from_validated(
+            Seq(sequence), id=first_word, name=first_word, description=title
+        )
 
 
 class FastaTwoLineIterator(SequenceIterator):
     """Parser for Fasta files with exactly two lines per record."""
+
+    modes = "t"
 
     def __init__(self, source):
         """Iterate over two-line Fasta records (as SeqRecord objects).
@@ -223,36 +281,223 @@ class FastaTwoLineIterator(SequenceIterator):
         Only the default title to ID/name/description parsing offered
         by the relaxed FASTA parser is offered.
         """
-        super().__init__(source, mode="t", fmt="FASTA")
+        super().__init__(source, fmt="FASTA")
+        self._data = FastaTwoLineParser(self.stream)
 
-    def parse(self, handle):
-        """Start parsing the file, and return a SeqRecord generator."""
-        records = self.iterate(handle)
-        return records
+    def __next__(self):
+        try:
+            title, sequence = next(self._data)
+        except StopIteration:
+            raise StopIteration from None
+        try:
+            first_word = title.split(None, 1)[0]
+        except IndexError:
+            assert not title, repr(title)
+            # Should we use SeqRecord default for no ID?
+            first_word = ""
+        return SeqRecord(
+            Seq(sequence), id=first_word, name=first_word, description=title
+        )
 
-    def iterate(self, handle):
-        """Parse the file and generate SeqRecord objects."""
-        for title, sequence in FastaTwoLineParser(handle):
-            try:
-                first_word = title.split(None, 1)[0]
-            except IndexError:
-                assert not title, repr(title)
-                # Should we use SeqRecord default for no ID?
-                first_word = ""
-            yield SeqRecord(
-                Seq(sequence), id=first_word, name=first_word, description=title
-            )
+
+class FastaBlastIterator(SequenceIterator):
+    """Parser for Fasta files, allowing for comments as in BLAST."""
+
+    modes = "t"
+
+    def __init__(
+        self,
+        source: _TextIOSource,
+        alphabet: None = None,
+    ) -> None:
+        """Iterate over Fasta records as SeqRecord objects.
+
+        Arguments:
+         - source - input stream opened in text mode, or a path to a file
+         - alphabet - optional alphabet, not used. Leave as None.
+
+        This parser expects the data to be in FASTA format. As in BLAST, lines
+        starting with '#', '!', or ';' are interpreted as comments and ignored.
+
+        This iterator acts like calling Bio.SeqIO.parse(handle, "fasta-blast")
+        with no custom handling of the title lines:
+
+        >>> with open("Fasta/dups.fasta") as handle:
+        ...     for record in FastaIterator(handle):
+        ...         print(record.id)
+        ...
+        alpha
+        beta
+        gamma
+        alpha
+        delta
+
+        If you want to modify the records before writing, for example to change
+        the ID of each record, you can use a generator function as follows:
+
+        >>> def modify_records(records):
+        ...     for record in records:
+        ...         record.id = record.id.upper()
+        ...         yield record
+        ...
+        >>> with open('Fasta/dups.fasta') as handle:
+        ...     for record in modify_records(FastaIterator(handle)):
+        ...         print(record.id)
+        ...
+        ALPHA
+        BETA
+        GAMMA
+        ALPHA
+        DELTA
+
+        """
+        if alphabet is not None:
+            raise ValueError("The alphabet argument is no longer supported")
+        super().__init__(source, fmt="FASTA")
+        for line in self.stream:
+            if line[0] not in "#!;":
+                if not line.startswith(">"):
+                    raise ValueError(
+                        "Expected FASTA record starting with '>' character.\n"
+                        "If this line is a comment, please use '#', '!', or ';' as "
+                        "the first character, or use the 'fasta-pearson' "
+                        "format for parsing.\n"
+                        f"Got: '{line}'"
+                    )
+                self._line = line
+                break
+        else:
+            self._line = None
+
+    def __next__(self):
+        line = self._line
+        if line is None:
+            raise StopIteration
+        title = line[1:].rstrip()
+        lines = []
+        for line in self.stream:
+            # Main logic
+            # Note, remove trailing whitespace, and any internal spaces
+            # (and any embedded \r which are possible in mangled files
+            # when not opened in universal read lines mode)
+            if line[0] in "#!;":
+                pass
+            elif line[0] == ">":
+                self_line = line
+                break
+            else:
+                lines.append(line.rstrip())
+        else:
+            self._line = None
+        try:
+            first_word = title.split(None, 1)[0]
+        except IndexError:
+            first_word = ""
+        sequence = "".join(lines).replace(" ", "").replace("\r", "")
+        return SeqRecord(
+            Seq(sequence), id=first_word, name=first_word, description=title
+        )
+
+
+class FastaPearsonIterator(SequenceIterator):
+    """Parser for Fasta files, allowing for comments as in the FASTA aligner."""
+
+    modes = "t"
+
+    def __init__(
+        self,
+        source: _TextIOSource,
+        alphabet: None = None,
+    ) -> None:
+        """Iterate over Fasta records as SeqRecord objects.
+
+        Arguments:
+         - source - input stream opened in text mode, or a path to a file
+         - alphabet - optional alphabet, not used. Leave as None.
+
+        This parser expects a Fasta format allowing for a header (before the
+        first sequence record) and comments (lines starting with ';') as in
+        William Pearson's FASTA aligner software.
+
+        This iterator acts as calling Bio.SeqIO.parse(handle, "fasta-pearson")
+        with no custom handling of the title lines:
+
+        >>> with open("Fasta/dups.fasta") as handle:
+        ...     for record in FastaIterator(handle):
+        ...         print(record.id)
+        ...
+        alpha
+        beta
+        gamma
+        alpha
+        delta
+
+        If you want to modify the records before writing, for example to change
+        the ID of each record, you can use a generator function as follows:
+
+        >>> def modify_records(records):
+        ...     for record in records:
+        ...         record.id = record.id.upper()
+        ...         yield record
+        ...
+        >>> with open('Fasta/dups.fasta') as handle:
+        ...     for record in modify_records(FastaIterator(handle)):
+        ...         print(record.id)
+        ...
+        ALPHA
+        BETA
+        GAMMA
+        ALPHA
+        DELTA
+
+        """
+        if alphabet is not None:
+            raise ValueError("The alphabet argument is no longer supported")
+        super().__init__(source, fmt="Fasta")
+        for line in self.stream:
+            if line.startswith(">"):
+                self._line = line
+                break
+        else:
+            self._line = None
+
+    def __next__(self):
+        line = self._line
+        if line is None:
+            raise StopIteration
+        title = line[1:].rstrip()
+        lines = []
+        for line in self.stream:
+            # Main logic
+            # Note, remove trailing whitespace, and any internal spaces
+            # (and any embedded \r which are possible in mangled files
+            # when not opened in universal read lines mode)
+            if line[0] == ";":
+                pass
+            elif line[0] == ">":
+                self._line = line
+                break
+            else:
+                lines.append(line.rstrip())
+        else:
+            self._line = None
+        try:
+            first_word = title.split(None, 1)[0]
+        except IndexError:
+            first_word = ""
+        sequence = "".join(lines).replace(" ", "").replace("\r", "")
+        return SeqRecord(
+            Seq(sequence), id=first_word, name=first_word, description=title
+        )
 
 
 class FastaWriter(SequenceWriter):
-    """Class to write Fasta format files (OBSOLETE).
+    """FASTA file writer."""
 
-    Please use the ``as_fasta`` function instead, or the top level
-    ``Bio.SeqIO.write()`` function instead using ``format="fasta"``.
-    """
+    modes = "t"
 
     def __init__(self, target, wrap=60, record2title=None):
-        """Create a Fasta writer (OBSOLETE).
+        """Create a Fasta writer.
 
         Arguments:
          - target - Output stream opened in text mode, or a path to a file.
@@ -277,11 +522,9 @@ class FastaWriter(SequenceWriter):
 
             handle = open(filename, "w")
             writer = FastaWriter(handle)
-            writer.write_header() # does nothing for Fasta files
             ...
             Multiple writer.write_record() and/or writer.write_records() calls
             ...
-            writer.write_footer() # does nothing for Fasta files
             handle.close()
 
         """
@@ -291,6 +534,30 @@ class FastaWriter(SequenceWriter):
                 raise ValueError
         self.wrap = wrap
         self.record2title = record2title
+
+    @classmethod
+    def to_string(cls, record):
+        """Turn a SeqRecord into a FASTA formatted string, and return it."""
+        id = _clean(record.id)
+        description = _clean(record.description)
+        if description and description.split(None, 1)[0] == id:
+            # The description includes the id at the start
+            title = description
+        elif description:
+            title = f"{id} {description}"
+        else:
+            title = id
+        assert "\n" not in title
+        assert "\r" not in title
+        lines = [f">{title}\n"]
+
+        data = _get_seq_string(record)  # Catches sequence being None
+        assert "\n" not in data
+        assert "\r" not in data
+        for i in range(0, len(data), 60):
+            lines.append(data[i : i + 60] + "\n")
+
+        return "".join(lines)
 
     def write_record(self, record):
         """Write a single Fasta record to the file."""
@@ -324,18 +591,15 @@ class FastaWriter(SequenceWriter):
 
 
 class FastaTwoLineWriter(FastaWriter):
-    """Class to write 2-line per record Fasta format files (OBSOLETE).
+    """Class to write 2-line per record Fasta format files.
 
     This means we write the sequence information  without line
     wrapping, and will always write a blank line for an empty
     sequence.
-
-    Please use the ``as_fasta_2line`` function instead, or the top level
-    ``Bio.SeqIO.write()`` function instead using ``format="fasta"``.
     """
 
     def __init__(self, handle, record2title=None):
-        """Create a 2-line per record Fasta writer (OBSOLETE).
+        """Create a 2-line per record Fasta writer.
 
         Arguments:
          - handle - Handle to an output file, e.g. as returned
@@ -357,68 +621,72 @@ class FastaTwoLineWriter(FastaWriter):
 
             handle = open(filename, "w")
             writer = FastaWriter(handle)
-            writer.write_header() # does nothing for Fasta files
             ...
             Multiple writer.write_record() and/or writer.write_records() calls
             ...
-            writer.write_footer() # does nothing for Fasta files
             handle.close()
 
         """
         super().__init__(handle, wrap=None, record2title=record2title)
 
+    @classmethod
+    def to_string(cls, record):
+        """Return a string in FASTA format with the sequence as one line."""
+        id = _clean(record.id)
+        description = _clean(record.description)
+        if description and description.split(None, 1)[0] == id:
+            # The description includes the id at the start
+            title = description
+        elif description:
+            title = f"{id} {description}"
+        else:
+            title = id
+        assert "\n" not in title
+        assert "\r" not in title
+
+        data = _get_seq_string(record)  # Catches sequence being None
+        assert "\n" not in data
+        assert "\r" not in data
+
+        return f">{title}\n{data}\n"
+
 
 def as_fasta(record):
-    """Turn a SeqRecord into a FASTA formatted string.
+    """Turn a SeqRecord into a FASTA formatted string."""
+    warnings.warn(
+        """\
+FastaIO.as_fasta is deprecated.
 
-    This is used internally by the SeqRecord's .format("fasta")
-    method and by the SeqIO.write(..., ..., "fasta") function.
-    """
-    id = _clean(record.id)
-    description = _clean(record.description)
-    if description and description.split(None, 1)[0] == id:
-        # The description includes the id at the start
-        title = description
-    elif description:
-        title = f"{id} {description}"
-    else:
-        title = id
-    assert "\n" not in title
-    assert "\r" not in title
-    lines = [f">{title}\n"]
+Instead of
 
-    data = _get_seq_string(record)  # Catches sequence being None
-    assert "\n" not in data
-    assert "\r" not in data
-    for i in range(0, len(data), 60):
-        lines.append(data[i : i + 60] + "\n")
+FastaIO.as_fasta(record)
 
-    return "".join(lines)
+please use
+
+format(record, "fasta")
+""",
+        DeprecationWarning,
+    )
+    return FastaWriter.to_string(record)
 
 
 def as_fasta_2line(record):
-    """Turn a SeqRecord into a two-line FASTA formatted string.
+    """Turn a SeqRecord into a two-line FASTA formatted string."""
+    warnings.warn(
+        """\
+FastaIO.as_fasta_2line is deprecated.
 
-    This is used internally by the SeqRecord's .format("fasta-2line")
-    method and by the SeqIO.write(..., ..., "fasta-2line") function.
-    """
-    id = _clean(record.id)
-    description = _clean(record.description)
-    if description and description.split(None, 1)[0] == id:
-        # The description includes the id at the start
-        title = description
-    elif description:
-        title = f"{id} {description}"
-    else:
-        title = id
-    assert "\n" not in title
-    assert "\r" not in title
+Instead of
 
-    data = _get_seq_string(record)  # Catches sequence being None
-    assert "\n" not in data
-    assert "\r" not in data
+FastaIO.as_fasta_2line(record)
 
-    return f">{title}\n{data}\n"
+please use
+
+format(record, "fasta-2line")
+""",
+        DeprecationWarning,
+    )
+    return FastaTwoLineWriter.to_string(record)
 
 
 if __name__ == "__main__":

@@ -5,8 +5,8 @@
 # Please see the LICENSE file that should have been included as part of this
 # package.
 """Tests for the SeqIO Gck module."""
-import unittest
 
+import unittest
 from io import BytesIO
 
 from Bio import SeqIO
@@ -82,12 +82,12 @@ class TestGckWithArtificialData(unittest.TestCase):
 class TestGckWithImproperHeader(unittest.TestCase):
     def test_read(self):
         """Read a file with an incomplete header."""
-        handle = BytesIO(b"tiny")
+        stream = BytesIO(b"tiny")
         with self.assertRaisesRegex(
-            ValueError, "Improper header, cannot read 24 bytes from handle"
+            ValueError, "Improper header, cannot read 24 bytes from stream"
         ):
-            SeqIO.read(handle, "gck")
-        handle.close()
+            SeqIO.read(stream, "gck")
+        stream.close()
 
 
 if __name__ == "__main__":

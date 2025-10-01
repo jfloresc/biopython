@@ -20,7 +20,7 @@ import subprocess
 import unittest
 
 try:
-    import numpy
+    import numpy as np
 except ImportError:
     from Bio import MissingPythonDependencyError
 
@@ -30,7 +30,9 @@ except ImportError:
 
 
 from Bio.PDB import PDBParser
-from Bio.PDB.NACCESS import NACCESS, process_asa_data, process_rsa_data
+from Bio.PDB.NACCESS import NACCESS
+from Bio.PDB.NACCESS import process_asa_data
+from Bio.PDB.NACCESS import process_rsa_data
 
 
 class NACCESS_test(unittest.TestCase):

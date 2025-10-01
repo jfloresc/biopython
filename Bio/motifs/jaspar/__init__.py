@@ -6,12 +6,12 @@
 # package.
 """JASPAR2014 module."""
 
-from Bio.Seq import Seq
-import re
 import math
+import re
 
-from Bio import motifs
 from Bio import Align
+from Bio import motifs
+from Bio.Seq import Seq
 
 
 class Motif(motifs.Motif):
@@ -71,7 +71,7 @@ class Motif(motifs.Motif):
         return version
 
     def __str__(self):
-        """Return a string represention of the JASPAR profile.
+        """Return a string representation of the JASPAR profile.
 
         We choose to provide only the filled metadata information.
         """

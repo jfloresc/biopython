@@ -16,11 +16,12 @@ Functions:
 
 """
 
-
 import io
 import re
 
-from Bio.SeqFeature import SeqFeature, SimpleLocation, Position
+from Bio.SeqFeature import Position
+from Bio.SeqFeature import SeqFeature
+from Bio.SeqFeature import SimpleLocation
 
 
 class SwissProtParserError(ValueError):
@@ -545,7 +546,7 @@ def _read_dt(record, line):
             version = 0
         date = cols[0].rstrip(",")
 
-        # Re-use the historical property names, even though
+        # Reuse the historical property names, even though
         # the meaning has changed slightly:
         if "INTEGRATED" in uprline:
             record.created = date, version
@@ -672,6 +673,7 @@ def _read_rx(reference, value):
             reference.references.append((cols[0].rstrip(";"), cols[1].rstrip(".")))
     if warn:
         import warnings
+
         from Bio import BiopythonParserWarning
 
         warnings.warn(f"Possibly corrupt RX line {value!r}", BiopythonParserWarning)

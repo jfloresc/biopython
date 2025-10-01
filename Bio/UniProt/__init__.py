@@ -20,18 +20,16 @@ import json
 import re
 import urllib.parse
 from http.client import HTTPResponse
-
-from typing import Optional, List
+from typing import Optional
 from urllib.request import urlopen
-
 
 _re_next_link = re.compile(r'<(.+)>; rel="next"')
 
 
-def _get_next_link(response: HTTPResponse) -> Optional[str]:
+def _get_next_link(response: HTTPResponse) -> str | None:
     headers = response.headers
 
-    if "Link" in headers:
+    if "Link" in headers and headers["Link"]:
         match = _re_next_link.match(headers["Link"])
         if match:
             return match.group(1)
@@ -39,12 +37,17 @@ def _get_next_link(response: HTTPResponse) -> Optional[str]:
     return None
 
 
-def _get_results(response: HTTPResponse) -> List[dict]:
+def _get_results(response: HTTPResponse) -> list[dict]:
     return json.loads(response.read().decode())["results"]
 
 
 def _get_search_result_count(response: HTTPResponse) -> int:
-    return int(response.headers["x-total-results"])
+    headers = response.headers
+
+    if "x-total-results" in headers and headers["x-total-results"]:
+        return int(headers["x-total-results"])
+    else:
+        return 0
 
 
 class _UniProtSearchResults:
@@ -62,7 +65,7 @@ class _UniProtSearchResults:
 
     def __init__(self, first_url: str):
         self.next_url = first_url
-        self.results_cache: List[dict] = []
+        self.results_cache: list[dict] = []
         self.next_result_index = 0
         response = self._fetch_next_batch()
         self.search_result_count = _get_search_result_count(response)
@@ -112,7 +115,7 @@ class _UniProtSearchResults:
 
 
 def search(
-    query: str, fields: Optional[List[str]] = None, batch_size: int = 500
+    query: str, fields: list[str] | None = None, batch_size: int = 500
 ) -> _UniProtSearchResults:
     """Search the UniProt database.
 

@@ -26,8 +26,8 @@ unparsable file.
 
 You are expected to use this module via the Bio.Align functions.
 """
-import numpy as np
 
+import numpy as np
 
 from Bio.Align import Alignment
 from Bio.Align import interfaces
@@ -430,14 +430,14 @@ class AlignmentIterator(interfaces.AlignmentIterator):
     def _read_header(self, stream):
         self.metadata = {}
         self.metadata["Program"] = "exonerate"
-        line = next(stream)
+        line = stream.readline()
         prefix = "Command line: "
         assert line.startswith(prefix)
         commandline = line[len(prefix) :].strip()
         assert commandline.startswith("[")
         assert commandline.endswith("]")
         self.metadata["Command line"] = commandline[1:-1]
-        line = next(stream)
+        line = stream.readline()
         prefix = "Hostname: "
         assert line.startswith(prefix)
         hostname = line[len(prefix) :].strip()
@@ -459,7 +459,7 @@ class AlignmentIterator(interfaces.AlignmentIterator):
         qs = 0
         ts = 0
         n = (len(words) - 8) // 2
-        coordinates = np.empty((2, n + 1), int)
+        coordinates = np.empty((2, n + 1), np.intp)
         coordinates[0, 0] = ts
         coordinates[1, 0] = qs
         for i, (operation, step) in enumerate(zip(words[9::2], words[10::2])):
@@ -538,7 +538,7 @@ class AlignmentIterator(interfaces.AlignmentIterator):
         qs = 0
         ts = 0
         n = (len(words) - 8) // 3 + ops.count("N")
-        coordinates = np.empty((2, n + 1), int)
+        coordinates = np.empty((2, n + 1), np.intp)
         coordinates[0, 0] = ts
         coordinates[1, 0] = qs
         operations = bytearray(n)
@@ -570,7 +570,7 @@ class AlignmentIterator(interfaces.AlignmentIterator):
                         % (query_step, target_step)
                     )
             elif operation == "N":  # Non-equivalenced (unaligned) region
-                operation = "U"  # 'N' is alread used for introns in SAM/BAM
+                operation = "U"  # 'N' is already used for introns in SAM/BAM
                 if target_step > 0:
                     ts += target_step
                     coordinates[0, i + 1] = ts
@@ -637,13 +637,12 @@ class AlignmentIterator(interfaces.AlignmentIterator):
         for line in stream:
             line = line.strip()
             if line == "-- completed exonerate analysis":
-                try:
-                    next(stream)
-                except StopIteration:
-                    return
-                raise ValueError(
-                    "Found additional data after 'completed exonerate analysis'; corrupt file?"
-                )
+                line = stream.readline()
+                if line:
+                    raise ValueError(
+                        "Found additional data after 'completed exonerate analysis'; corrupt file?"
+                    )
+                return
             if line.startswith("vulgar: "):
                 words = line[8:].split()
                 alignment = self._parse_vulgar(words)

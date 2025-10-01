@@ -5,26 +5,25 @@
 # license.  Please see the LICENSE file that should have been included
 # as part of this package.
 """Tests Bio.SeqFeature."""
+
 import unittest
 import warnings
-
 from copy import deepcopy
 from os import path
 
-from Bio import BiopythonDeprecationWarning
+from Bio import BiopythonParserWarning
 from Bio import Seq
 from Bio import SeqIO
 from Bio import SeqRecord
-from Bio import BiopythonParserWarning
 from Bio.Data.CodonTable import TranslationError
-from Bio.SeqFeature import AfterPosition
+from Bio.SeqFeature import AfterPosition, Location
 from Bio.SeqFeature import BeforePosition
 from Bio.SeqFeature import BetweenPosition
 from Bio.SeqFeature import CompoundLocation
 from Bio.SeqFeature import ExactPosition
-from Bio.SeqFeature import SimpleLocation
 from Bio.SeqFeature import OneOfPosition
 from Bio.SeqFeature import SeqFeature
+from Bio.SeqFeature import SimpleLocation
 from Bio.SeqFeature import UnknownPosition
 from Bio.SeqFeature import WithinPosition
 
@@ -204,19 +203,6 @@ class TestSeqFeature(unittest.TestCase):
         with self.assertRaises(TranslationError):
             f.translate(seq)
 
-    def test_location_aliases(self):
-        f = SeqFeature(None, type="CDS")
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("ignore", BiopythonDeprecationWarning)
-            with self.assertRaisesRegex(
-                AttributeError,
-                # "The .strand alias is only available when .location is defined.",
-                "'NoneType' object has no attribute 'strand'",
-            ):
-                f.strand
-            self.assertEqual(None, f.ref)
-            self.assertEqual(None, f.ref_db)
-
 
 class TestLocations(unittest.TestCase):
     def test_fuzzy(self):
@@ -256,6 +242,21 @@ class TestLocations(unittest.TestCase):
         self.assertEqual(int(location2.end), 24)
         self.assertEqual(int(location3.start), 10)
         self.assertEqual(int(location3.end), 40)
+
+    def test_fromstring_is_static(self):
+        """Test whether Location.fromstring is static.
+        See `#4984 <https://github.com/biopython/biopython/pull/4984#issuecomment-2758280951>`_.
+        """
+        is_static = isinstance(Location.__dict__["fromstring"], staticmethod)
+        self.assertTrue(is_static)
+        # with old implementation
+        # behaviour of CompoundLocation.fromstring would change
+        # depending on whether we call from instance or class
+        f1 = SimpleLocation(10, 40)
+        f2 = SimpleLocation(50, 59)
+        instance = CompoundLocation([f1, f2])
+        spec = "10..40"
+        self.assertEqual(Location.fromstring(spec), instance.fromstring(spec))
 
 
 class TestPositions(unittest.TestCase):
@@ -366,14 +367,14 @@ class TestExtract(unittest.TestCase):
                 "join{[0:2](-), [3:4](-)}",
             )
 
-        # Origin-spanning location containing the entire sequence
-        self.assertEqual(
-            str(SimpleLocation.fromstring("3..2", 4, True)), "join{[2:4], [0:2]}"
-        )
-        self.assertEqual(
-            str(SimpleLocation.fromstring("complement(3..2)", 4, True)),
-            "join{[0:2](-), [2:4](-)}",
-        )
+            # Origin-spanning location containing the entire sequence
+            self.assertEqual(
+                str(SimpleLocation.fromstring("3..2", 4, True)), "join{[2:4], [0:2]}"
+            )
+            self.assertEqual(
+                str(SimpleLocation.fromstring("complement(3..2)", 4, True)),
+                "join{[0:2](-), [2:4](-)}",
+            )
 
 
 if __name__ == "__main__":

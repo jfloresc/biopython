@@ -8,6 +8,7 @@
 
 You are expected to use this module via the Bio.Align functions.
 """
+
 from Bio.Align import Alignment
 from Bio.Align import interfaces
 from Bio.Seq import Seq
@@ -49,10 +50,9 @@ class AlignmentIterator(interfaces.AlignmentIterator):
             else:
                 raise ValueError("Unknown key '%s'" % key)
         self.metadata = metadata
-        try:
-            line = next(stream)
-        except StopIteration:
-            raise ValueError("Truncated file.") from None
+        line = stream.readline()
+        if not line:
+            raise ValueError("Truncated file.")
         assert line.split() == [
             "No",
             "Hit",
@@ -83,13 +83,15 @@ class AlignmentIterator(interfaces.AlignmentIterator):
             assert len(query_sequence) == n
             if n == 0:
                 return
-            coordinates = Alignment.infer_coordinates([target_sequence, query_sequence])
+            lines = [target_sequence.encode(), query_sequence.encode()]
+            seq_data, coordinates = Alignment.parse_printed_alignment(lines)
+            target_seq_data, query_seq_data = seq_data
             coordinates[0, :] += target_start
             coordinates[1, :] += query_start
-            sequence = {query_start: query_sequence.replace("-", "")}
+            sequence = {query_start: query_seq_data}
             query_seq = Seq(sequence, length=query_length)
             query = SeqRecord(query_seq, id=self.query_name)
-            sequence = {target_start: target_sequence.replace("-", "")}
+            sequence = {target_start: target_seq_data}
             target_seq = Seq(sequence, length=target_length)
             target_annotations = {
                 "hmm_name": hmm_name,
@@ -138,7 +140,7 @@ class AlignmentIterator(interfaces.AlignmentIterator):
                 pass
             elif line.startswith(">"):
                 hmm_name, hmm_description = line[1:].split(None, 1)
-                line = next(stream)
+                line = stream.readline()
                 words = line.split()
                 alignment_annotations = {}
                 for word in words:
@@ -150,11 +152,8 @@ class AlignmentIterator(interfaces.AlignmentIterator):
                     value = float(value)
                     alignment_annotations[key] = value
             elif line == "Done!":
-                try:
-                    next(stream)
-                except StopIteration:
-                    pass
-                else:
+                line = stream.readline()
+                if line:
                     raise ValueError(
                         "Found additional data after 'Done!'; corrupt file?"
                     )

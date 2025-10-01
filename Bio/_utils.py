@@ -7,10 +7,13 @@
 # package.
 """Common utility functions for various Bio submodules."""
 
-
 import os
-from typing import Any, TypeVar, Callable, Optional, cast
+from typing import Any
+from collections.abc import Callable
+from typing import cast
+from typing import Optional
 from typing import Protocol
+from typing import TypeVar
 
 # workaround type checking method attributes from https://github.com/python/mypy/issues/2087#issuecomment-587741762
 
@@ -18,7 +21,7 @@ F = TypeVar("F", bound=Callable[..., object])
 
 
 class _FunctionWithPrevious(Protocol[F]):
-    previous: Optional[int]
+    previous: int | None
     __call__: F
 
 
@@ -30,7 +33,7 @@ def function_with_previous(func: F) -> _FunctionWithPrevious[F]:
     return function_with_previous
 
 
-def find_test_dir(start_dir: Optional[str] = None) -> str:
+def find_test_dir(start_dir: str | None = None) -> str:
     """Find the absolute path of Biopython's Tests directory.
 
     Arguments:
@@ -65,20 +68,20 @@ def find_test_dir(start_dir: Optional[str] = None) -> str:
     )
 
 
-def run_doctest(target_dir: Optional[str] = None, *args: Any, **kwargs: Any) -> None:
+def run_doctest(target_dir: str | None = None, *args: Any, **kwargs: Any) -> None:
     """Run doctest for the importing module."""
     import doctest
 
     # default doctest options
-    default_kwargs = {"optionflags": doctest.ELLIPSIS}
-    kwargs.update(default_kwargs)
+    doctest_attributes: dict[str, Any] = {"optionflags": doctest.ELLIPSIS}
+    doctest_attributes.update(kwargs)
 
     cur_dir = os.path.abspath(os.curdir)
 
     print("Running doctests...")
     try:
         os.chdir(find_test_dir(target_dir))
-        doctest.testmod(*args, **kwargs)
+        doctest.testmod(*args, **doctest_attributes)
     finally:
         # and revert back to initial directory
         os.chdir(cur_dir)

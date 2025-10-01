@@ -5,16 +5,15 @@
 
 """mmCIF parsers."""
 
-
-import numpy as np
 import warnings
 
-from Bio.File import as_handle
+import numpy as np
 
+from Bio.File import as_handle
 from Bio.PDB.MMCIF2Dict import MMCIF2Dict
-from Bio.PDB.StructureBuilder import StructureBuilder
 from Bio.PDB.PDBExceptions import PDBConstructionException
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
+from Bio.PDB.StructureBuilder import StructureBuilder
 
 
 class MMCIFParser:
@@ -230,9 +229,7 @@ class MMCIFParser:
                 # Non-existing residue ID
                 try:
                     msg_resseq = mmcif_dict["_atom_site.auth_seq_id"][i]
-                    msg = "Non-existing residue ID in chain '{}', residue '{}'".format(
-                        chainid, msg_resseq
-                    )
+                    msg = f"Non-existing residue ID in chain '{chainid}', residue '{msg_resseq}'"
                 except (KeyError, IndexError):
                     msg = f"Non-existing residue ID in chain '{chainid}'"
                 warnings.warn(
@@ -518,9 +515,7 @@ class FastMMCIFParser:
                 # Non-existing residue ID
                 try:
                     msg_resseq = mmcif_dict["_atom_site.auth_seq_id"][i]
-                    msg = "Non-existing residue ID in chain '{}', residue '{}'".format(
-                        chainid, msg_resseq
-                    )
+                    msg = f"Non-existing residue ID in chain '{chainid}', residue '{msg_resseq}'"
                 except (KeyError, IndexError):
                     msg = f"Non-existing residue ID in chain '{chainid}'"
                 warnings.warn(

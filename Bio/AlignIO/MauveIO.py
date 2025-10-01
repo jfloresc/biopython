@@ -76,9 +76,8 @@ the annotation attribute of each record::
       start: 9475, end: 10076, strand: -1
 
 """
-import re
 
-from typing import List
+import re
 
 from Bio.Align import MultipleSeqAlignment
 from Bio.Seq import Seq
@@ -86,7 +85,6 @@ from Bio.SeqRecord import SeqRecord
 
 from .Interfaces import AlignmentIterator
 from .Interfaces import SequentialAlignmentWriter
-
 
 XMFA_HEADER_REGEX = re.compile(
     r"> (?P<id>\d+):(?P<start>\d+)-(?P<end>\d+) (?P<strand>[+-]) (?P<name>.*)"
@@ -225,7 +223,7 @@ class MauveWriter(SequentialAlignmentWriter):
 class MauveIterator(AlignmentIterator):
     """Mauve xmfa alignment iterator."""
 
-    _ids: List[str] = []  # for caching IDs between __next__ calls
+    _ids: list[str] = []  # for caching IDs between __next__ calls
 
     def __next__(self):
         """Parse the next alignment from the handle."""

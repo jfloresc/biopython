@@ -23,21 +23,29 @@ mailing list and ask for help.  See:
 http://biopython.org/wiki/Mailing_lists
 """
 
-import sys
-import os
 import ast
+import os
+import sys
 
 try:
-    from setuptools import setup
+    from setuptools import __version__ as setuptools_version
     from setuptools import Command
     from setuptools import Extension
+    from setuptools import setup
 except ImportError:
     sys.exit(
         "We need the Python library setuptools to be installed. "
         "Try running: python -m ensurepip"
     )
 
-if "bdist_wheel" in sys.argv:
+
+setuptools_version_tuple = tuple(int(x) for x in setuptools_version.split(".")[:2])
+if setuptools_version_tuple < (70, 1) and "bdist_wheel" in sys.argv:
+    # Check for presence of wheel in setuptools < 70.1
+    # Before setuptools 70.1, wheel is needed to make a bdist_wheel.
+    # Since 70.1 was released including
+    # https://github.com/pypa/setuptools/pull/4369,
+    # it is not needed.
     try:
         import wheel  # noqa: F401
     except ImportError:
@@ -48,7 +56,7 @@ if "bdist_wheel" in sys.argv:
 
 
 # Make sure we have the right Python version.
-MIN_PY_VER = (3, 8)
+MIN_PY_VER = (3, 10)
 if sys.version_info[:2] < MIN_PY_VER:
     sys.stderr.write(
         ("ERROR: Biopython requires Python %i.%i or later. " % MIN_PY_VER)
@@ -118,11 +126,10 @@ PACKAGES = [
     "Bio",
     "Bio.Affy",
     "Bio.Align",
-    "Bio.Align.Applications",
     "Bio.Align.substitution_matrices",
+    "Bio.Align.substitution_matrices.data",
     "Bio.AlignIO",
     "Bio.Alphabet",
-    "Bio.Application",
     "Bio.Blast",
     "Bio.CAPS",
     "Bio.Cluster",
@@ -131,6 +138,8 @@ PACKAGES = [
     "Bio.Data",
     "Bio.Emboss",
     "Bio.Entrez",
+    "Bio.Entrez.DTDs",
+    "Bio.Entrez.XSDs",
     "Bio.ExPASy",
     "Bio.GenBank",
     "Bio.Geo",
@@ -146,7 +155,6 @@ PACKAGES = [
     "Bio.KEGG.KGML",
     "Bio.Medline",
     "Bio.motifs",
-    "Bio.motifs.applications",
     "Bio.motifs.jaspar",
     "Bio.Nexus",
     "Bio.NMR",
@@ -163,17 +171,16 @@ PACKAGES = [
     "Bio.SearchIO.BlastIO",
     "Bio.SearchIO.HHsuiteIO",
     "Bio.SearchIO.HmmerIO",
+    "Bio.SearchIO.InfernalIO",
     "Bio.SearchIO.ExonerateIO",
     "Bio.SearchIO.InterproscanIO",
     "Bio.SeqIO",
     "Bio.SeqUtils",
     "Bio.Sequencing",
-    "Bio.Sequencing.Applications",
     "Bio.SVDSuperimposer",
     "Bio.SwissProt",
     "Bio.TogoWS",
     "Bio.Phylo",
-    "Bio.Phylo.Applications",
     "Bio.Phylo.PAML",
     "Bio.UniGene",
     "Bio.UniProt",
@@ -182,16 +189,25 @@ PACKAGES = [
 ]
 
 EXTENSIONS = [
+    Extension("Bio.Align._aligncore", ["Bio/Align/_aligncore.c"]),
+    Extension("Bio.Align._alignmentcounts", ["Bio/Align/_alignmentcounts.c"]),
     Extension("Bio.Align._codonaligner", ["Bio/Align/_codonaligner.c"]),
     Extension("Bio.Align._pairwisealigner", ["Bio/Align/_pairwisealigner.c"]),
+    Extension(
+        "Bio.Align.substitution_matrices._arraycore",
+        ["Bio/Align//substitution_matrices/_arraycore.c"],
+    ),
     Extension("Bio.cpairwise2", ["Bio/cpairwise2module.c"]),
     Extension("Bio.Nexus.cnexus", ["Bio/Nexus/cnexus.c"]),
     Extension("Bio.motifs._pwm", ["Bio/motifs/_pwm.c"]),
     Extension(
-        "Bio.Cluster._cluster", ["Bio/Cluster/cluster.c", "Bio/Cluster/clustermodule.c"]
+        "Bio.Cluster._cluster",
+        ["Bio/Cluster/cluster.c", "Bio/Cluster/clustermodule.c"],
+        extra_compile_args=["-DCLUSTER_USE_PYTHON_MEMORY"],
     ),
-    Extension("Bio.PDB.kdtrees", ["Bio/PDB/kdtrees.c"]),
     Extension("Bio.PDB.ccealign", ["Bio/PDB/ccealignmodule.c"]),
+    Extension("Bio.PDB.kdtrees", ["Bio/PDB/kdtrees.c"]),
+    Extension("Bio.PDB._bcif_helper", ["Bio/PDB/bcifhelpermodule.c"]),
     Extension("Bio.SeqIO._twoBitIO", ["Bio/SeqIO/_twoBitIO.c"]),
 ]
 
@@ -241,11 +257,10 @@ setup(
         "Operating System :: OS Independent",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Bio-Informatics",
         "Topic :: Software Development :: Libraries :: Python Modules",

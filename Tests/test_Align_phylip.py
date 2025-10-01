@@ -5,11 +5,13 @@
 # as part of this package.
 """Tests for Bio.Align.phylip module."""
 import unittest
-
 from io import StringIO
+from tempfile import NamedTemporaryFile
 
 from Bio import Align
+from Bio.Align import substitution_matrices
 
+substitution_matrix = substitution_matrices.load("BLOSUM62")
 
 try:
     import numpy as np
@@ -61,6 +63,13 @@ class TestPhylipReading(unittest.TestCase):
         with self.assertRaises(AttributeError):
             alignments._stream
         self.check_reading_writing(path)
+        with open(path) as stream:
+            data = stream.read()
+        stream = NamedTemporaryFile("w+t")
+        stream.write(data)
+        stream.seek(0)
+        alignments = Align.parse(stream, "phylip")
+        self.check_one(alignments)
 
     def check_one(self, alignments):
         alignment = next(alignments)
@@ -254,6 +263,61 @@ Deinococcu-MKKSLLSLKLSGLLVPSVLALS--------LSACSSPSSTLNQGTLKIAMEGTYPPFTSKNE-QGELVG
 HISJ_E_COLMKKLVLSLSLVLAFSSATAAF-------------------AAIPQNIRIGTDPTYAPFESKNS-QGELVGFDIDLAKELCKRINTQCTFVENPLDALIPSLKAKKIDAIMSSLSITEKRQQEIAFTDKLYAADSRLVVAKNSDIQP-TVESLKGKRVGVLQGTTQETFGNEHWAPKGIEIVSYQGQDNIYSDLTAGRIDAAFQDEVAASEGFLKQPVGKDYKFGGPSVKDEKLFGVGTGMGLRKED--NELREALNKAFAEMRADGTYEKLAKKYFDFDVYGG---
 """,
         )
+        counts = alignment.counts(substitution_matrix)
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (substitution score = 10177.0; 6978 aligned letters; 2258 identities; 4720 mismatches; 3674 positives; 548 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    substitution_score = 10177.0,
+    aligned = 6978:
+        identities = 2258,
+        positives = 3674,
+        mismatches = 4720.
+    gaps = 548:
+        left_gaps = 27:
+            left_insertions = 15:
+                open_left_insertions = 4,
+                extend_left_insertions = 11;
+            left_deletions = 12:
+                open_left_deletions = 3,
+                extend_left_deletions = 9;
+        internal_gaps = 478:
+            internal_insertions = 252:
+                open_internal_insertions = 99,
+                extend_internal_insertions = 153;
+            internal_deletions = 226:
+                open_internal_deletions = 69,
+                extend_internal_deletions = 157;
+        right_gaps = 43:
+            right_insertions = 16:
+                open_right_insertions = 11,
+                extend_right_insertions = 5;
+            right_deletions = 27:
+                open_right_deletions = 10,
+                extend_right_deletions = 17.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 15)
+        self.assertEqual(counts.left_deletions, 12)
+        self.assertEqual(counts.right_insertions, 16)
+        self.assertEqual(counts.right_deletions, 27)
+        self.assertEqual(counts.internal_insertions, 252)
+        self.assertEqual(counts.internal_deletions, 226)
+        self.assertEqual(counts.left_gaps, 27)
+        self.assertEqual(counts.right_gaps, 43)
+        self.assertEqual(counts.internal_gaps, 478)
+        self.assertEqual(counts.insertions, 283)
+        self.assertEqual(counts.deletions, 265)
+        self.assertEqual(counts.gaps, 548)
+        self.assertEqual(counts.aligned, 6978)
+        self.assertEqual(counts.identities, 2258)
+        self.assertEqual(counts.mismatches, 4720)
+        self.assertEqual(counts.positives, 3674)
 
     def test_two_and_three(self):
         paths = ("Phylip/two.dat", "Phylip/three.dat")
@@ -348,6 +412,58 @@ Tax4      TCATCTCATGGTCAATAAGATACTCCTGCTTTTGGCGGGAAATGGTCAATCTTAAAAGGT
 Tax5      CCATCTCACGGTCGGTAAGATACACCTGCTTTTGGCGGGAAATGGTCAATATTAAAAGGT
 """,
             )
+            counts = alignment.counts()
+            self.assertEqual(
+                repr(counts),
+                "<AlignmentCounts object (600 aligned letters; 535 identities; 65 mismatches; 0 gaps) at 0x%x>"
+                % id(counts),
+            )
+            self.assertEqual(
+                str(counts),
+                """\
+AlignmentCounts object with
+    aligned = 600:
+        identities = 535,
+        mismatches = 65.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+            )
+            self.assertEqual(counts.left_insertions, 0)
+            self.assertEqual(counts.left_deletions, 0)
+            self.assertEqual(counts.right_insertions, 0)
+            self.assertEqual(counts.right_deletions, 0)
+            self.assertEqual(counts.internal_insertions, 0)
+            self.assertEqual(counts.internal_deletions, 0)
+            self.assertEqual(counts.left_gaps, 0)
+            self.assertEqual(counts.right_gaps, 0)
+            self.assertEqual(counts.internal_gaps, 0)
+            self.assertEqual(counts.insertions, 0)
+            self.assertEqual(counts.deletions, 0)
+            self.assertEqual(counts.gaps, 0)
+            self.assertEqual(counts.aligned, 600)
+            self.assertEqual(counts.identities, 535)
+            self.assertEqual(counts.mismatches, 65)
 
     def test_four(self):
         path = "Phylip/four.dat"
@@ -444,6 +560,58 @@ Chimp     AAACCCTTGCCGTTACGCTTAAACCGAGGCCGGGACACTCAT
 Gorilla   AAACCCTTGCCGGTACGCTTAAACCATTGCCGGTACGCTTAA
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (420 aligned letters; 230 identities; 190 mismatches; 0 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 420:
+        identities = 230,
+        mismatches = 190.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 0)
+        self.assertEqual(counts.insertions, 0)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 0)
+        self.assertEqual(counts.aligned, 420)
+        self.assertEqual(counts.identities, 230)
+        self.assertEqual(counts.mismatches, 190)
 
     def test_five_and_six(self):
         paths = ("Phylip/five.dat", "Phylip/six.dat")
@@ -512,6 +680,58 @@ Gorilla   AAACCCTTGCCGGTACGCTTAAACCATTGCCGGTACGCTTAA
 """,
             )
             self.check_reading_writing(path)
+            counts = alignment.counts()
+            self.assertEqual(
+                repr(counts),
+                "<AlignmentCounts object (420 aligned letters; 230 identities; 190 mismatches; 0 gaps) at 0x%x>"
+                % id(counts),
+            )
+            self.assertEqual(
+                str(counts),
+                """\
+AlignmentCounts object with
+    aligned = 420:
+        identities = 230,
+        mismatches = 190.
+    gaps = 0:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 0:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+            )
+            self.assertEqual(counts.left_insertions, 0)
+            self.assertEqual(counts.left_deletions, 0)
+            self.assertEqual(counts.right_insertions, 0)
+            self.assertEqual(counts.right_deletions, 0)
+            self.assertEqual(counts.internal_insertions, 0)
+            self.assertEqual(counts.internal_deletions, 0)
+            self.assertEqual(counts.left_gaps, 0)
+            self.assertEqual(counts.right_gaps, 0)
+            self.assertEqual(counts.internal_gaps, 0)
+            self.assertEqual(counts.insertions, 0)
+            self.assertEqual(counts.deletions, 0)
+            self.assertEqual(counts.gaps, 0)
+            self.assertEqual(counts.aligned, 420)
+            self.assertEqual(counts.identities, 230)
+            self.assertEqual(counts.mismatches, 190)
 
     def test_interlaced(self):
         path = "Phylip/interlaced.phy"
@@ -641,6 +861,61 @@ ALEU_HORVUMAHARVLLLALAVLATAAVAVASSSSFADSNPIRPVTDRAASTLESAVLGALGRTRHALRFARFAVRYGK
 CATH_HUMAN------MWATLPLLCAGAWLLGV--------PVCGAAELSVNSLEK------------FHFKSWMSKHRKTY-STEEYHHRLQTFASNWRKINAHN----NGNHTFKMALNQFSDMSFAEIKHKYLWSEPQNCSAT--KSNYLRGT--GPYPPSVDWRKKGNFVSPVKNQGACGSCWTFSTTGALESAIAIATGKMLSLAEQQLVDCAQDFNNY--------GCQGGLPSQAFEYILYNKGIMGEDTYPYQGKDGY-CKFQPGKAIGFVKDVANITIYDEEAMVEAVALYNPVSFAFEVTQDFMMYRTGIYSSTSCHKTPDKVNHAVLAVGYGEKNGI-----PYWIVKNSWGPQWGMNGYFLIERGKNMCGLAACASYPIPLV
 """,
         )
+        counts = alignment.counts(substitution_matrix)
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (substitution score = 2116.0; 975 aligned letters; 400 identities; 575 mismatches; 563 positives; 130 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    substitution_score = 2116.0,
+    aligned = 975:
+        identities = 400,
+        positives = 563,
+        mismatches = 575.
+    gaps = 130:
+        left_gaps = 12:
+            left_insertions = 5:
+                open_left_insertions = 1,
+                extend_left_insertions = 4;
+            left_deletions = 7:
+                open_left_deletions = 2,
+                extend_left_deletions = 5;
+        internal_gaps = 114:
+            internal_insertions = 48:
+                open_internal_insertions = 15,
+                extend_internal_insertions = 33;
+            internal_deletions = 66:
+                open_internal_deletions = 16,
+                extend_internal_deletions = 50;
+        right_gaps = 4:
+            right_insertions = 4:
+                open_right_insertions = 2,
+                extend_right_insertions = 2;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 5)
+        self.assertEqual(counts.left_deletions, 7)
+        self.assertEqual(counts.right_insertions, 4)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 48)
+        self.assertEqual(counts.internal_deletions, 66)
+        self.assertEqual(counts.left_gaps, 12)
+        self.assertEqual(counts.right_gaps, 4)
+        self.assertEqual(counts.internal_gaps, 114)
+        self.assertEqual(counts.insertions, 57)
+        self.assertEqual(counts.deletions, 73)
+        self.assertEqual(counts.gaps, 130)
+        self.assertEqual(counts.aligned, 975)
+        self.assertEqual(counts.identities, 400)
+        self.assertEqual(counts.mismatches, 575)
+        self.assertEqual(counts.positives, 563)
 
     def test_interlaced2(self):
         path = "Phylip/interlaced2.phy"
@@ -761,6 +1036,61 @@ IXI_236   TSPASIRPPAGPSSRPAMVSSR--RPSPPPPRRPPGRPCCSAAPPRPQATGGWKTCSGTCTTSTSTRHRG
 IXI_237   TSPASLRPPAGPSSRPAMVSSRR-RPSPPGPRRPT----CSAAPRRPQATGGYKTCSGTCTTSTSTRHRGRSGYSARTTTAACLRASRKSMRAACSR--GSRPNRFAPTLMSSCLTSTTGPPAYAGDRSHE
 """,
         )
+        counts = alignment.counts(substitution_matrix)
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (substitution score = 3602.0; 702 aligned letters; 667 identities; 35 mismatches; 681 positives; 78 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    substitution_score = 3602.0,
+    aligned = 702:
+        identities = 667,
+        positives = 681,
+        mismatches = 35.
+    gaps = 78:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 78:
+            internal_insertions = 36:
+                open_internal_insertions = 5,
+                extend_internal_insertions = 31;
+            internal_deletions = 42:
+                open_internal_deletions = 11,
+                extend_internal_deletions = 31;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 36)
+        self.assertEqual(counts.internal_deletions, 42)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 78)
+        self.assertEqual(counts.insertions, 36)
+        self.assertEqual(counts.deletions, 42)
+        self.assertEqual(counts.gaps, 78)
+        self.assertEqual(counts.aligned, 702)
+        self.assertEqual(counts.identities, 667)
+        self.assertEqual(counts.mismatches, 35)
+        self.assertEqual(counts.positives, 681)
 
 
 if __name__ == "__main__":

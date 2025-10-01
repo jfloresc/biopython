@@ -13,9 +13,9 @@ using Scripts/update_ncbi_codon_table.py
 Last updated at Version 4.4 (May 2019)
 """
 
-from Bio.Data import IUPACData
+from typing import Optional
 
-from typing import Dict, List, Optional
+from Bio.Data import IUPACData
 
 unambiguous_dna_by_name = {}
 unambiguous_dna_by_id = {}
@@ -48,20 +48,20 @@ class TranslationError(Exception):
 class CodonTable:
     """A codon-table, or genetic code."""
 
-    forward_table: Dict[str, str] = {}  # only includes codons which actually code
-    back_table: Dict[str, str] = {}  # for back translations
-    start_codons: List[str] = []
-    stop_codons: List[str] = []
+    forward_table: dict[str, str] = {}  # only includes codons which actually code
+    back_table: dict[str, str] = {}  # for back translations
+    start_codons: list[str] = []
+    stop_codons: list[str] = []
 
     # Not always called from derived classes!
     def __init__(
         self,
-        nucleotide_alphabet: Optional[str] = None,
-        protein_alphabet: Optional[str] = None,
-        forward_table: Dict[str, str] = forward_table,
-        back_table: Dict[str, str] = back_table,
-        start_codons: List[str] = start_codons,
-        stop_codons: List[str] = stop_codons,
+        nucleotide_alphabet: str | None = None,
+        protein_alphabet: str | None = None,
+        forward_table: dict[str, str] = forward_table,
+        back_table: dict[str, str] = back_table,
+        start_codons: list[str] = start_codons,
+        stop_codons: list[str] = stop_codons,
     ) -> None:
         """Initialize the class."""
         self.nucleotide_alphabet = nucleotide_alphabet
@@ -164,7 +164,7 @@ def make_back_table(table, default_stop_codon):
 class NCBICodonTable(CodonTable):
     """Codon table for generic nucleotide sequences."""
 
-    nucleotide_alphabet: Optional[str] = None
+    nucleotide_alphabet: str | None = None
     protein_alphabet = IUPACData.protein_letters
 
     def __init__(self, id, names, table, start_codons, stop_codons):

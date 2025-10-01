@@ -8,11 +8,11 @@
 
 You are expected to use this module via the Bio.Align functions.
 """
+
 from Bio.Align import Alignment
 from Bio.Align import interfaces
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-
 
 _PHYLIP_ID_WIDTH = 10
 
@@ -76,9 +76,8 @@ class AlignmentIterator(interfaces.AlignmentIterator):
     fmt = "PHYLIP"
 
     def _read_header(self, stream):
-        try:
-            line = next(stream)
-        except StopIteration:
+        line = stream.readline()
+        if not line:
             raise ValueError("Empty file.") from None
 
         words = line.split()
@@ -135,21 +134,17 @@ class AlignmentIterator(interfaces.AlignmentIterator):
     def _read_file(self, stream):
         names = []
         seqs = []
-        lines = [next(stream) for i in range(self._number_of_seqs)]
-        try:
-            line = next(stream)
-        except StopIteration:
-            pass
+        lines = [stream.readline() for i in range(self._number_of_seqs)]
+        line = stream.readline()
+        if line.rstrip():
+            # sequential file format
+            lines.append(line)
+            length = self._parse_sequential(lines, seqs, names, 0)
+            self._parse_sequential(stream, seqs, names, length)
         else:
-            if line.rstrip():
-                # sequential file format
-                lines.append(line)
-                length = self._parse_sequential(lines, seqs, names, 0)
-                self._parse_sequential(stream, seqs, names, length)
-                return names, seqs
-        # interleaved file format
-        self._parse_interleaved_first_block(lines, seqs, names)
-        self._parse_interleaved_other_blocks(stream, seqs)
+            # interleaved file format
+            self._parse_interleaved_first_block(lines, seqs, names)
+            self._parse_interleaved_other_blocks(stream, seqs)
         return names, seqs
 
     def _read_next_alignment(self, stream):
@@ -174,8 +169,8 @@ class AlignmentIterator(interfaces.AlignmentIterator):
             if "." in seq:
                 raise ValueError("PHYLIP format no longer allows dots in sequence")
 
-        coordinates = Alignment.infer_coordinates(seqs)
-        seqs = [seq.replace("-", "") for seq in seqs]
+        seqs = [seq.encode() for seq in seqs]
+        seqs, coordinates = Alignment.parse_printed_alignment(seqs)
         records = [
             SeqRecord(Seq(seq), id=name, description="")
             for (name, seq) in zip(names, seqs)

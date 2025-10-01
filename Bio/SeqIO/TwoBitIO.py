@@ -20,6 +20,7 @@ specifically requested, making the parser memory-efficient.
 The TwoBitIterator object implements the __getitem__, keys, and __len__
 methods that allow it to be used as a dictionary.
 """
+
 # The .2bit file format is defined by UCSC as follows
 # (see http://genome.ucsc.edu/FAQ/FAQformat.html#format7):
 #
@@ -69,7 +70,7 @@ methods that allow it to be used as a dictionary.
 # reserved - always zero for now
 # packedDna - the DNA packed to two bits per base, represented as so:
 #             T - 00, C - 01, A - 10, G - 11. The first base is in the most
-#             significant 2-bit byte; the last base is in the least significan
+#             significant 2-bit byte; the last base is in the least significant
 #             2 bits. For example, the sequence TCAG is represented as 00011011.
 try:
     import numpy as np
@@ -169,11 +170,11 @@ class _TwoBitSequenceData(SequenceDataAbstractBaseClass):
 class TwoBitIterator(SequenceIterator):
     """Parser for UCSC twoBit (.2bit) files."""
 
+    modes = "b"
+
     def __init__(self, source):
         """Read the file index."""
-        super().__init__(source, mode="b", fmt="twoBit")
-        # wait to close the file until the TwoBitIterator goes out of scope:
-        self.should_close_stream = False
+        super().__init__(source, fmt="twoBit")
         stream = self.stream
         data = stream.read(4)
         if not data:
@@ -235,14 +236,15 @@ class TwoBitIterator(SequenceIterator):
             if reserved != 0:
                 raise ValueError("Found non-zero reserved field %u" % reserved)
             sequence.offset = stream.tell()
-            sequences[name] = sequence
-
-    def parse(self, stream):
-        """Iterate over the sequences in the file."""
-        for name, sequence in self.sequences.items():
             sequence = Seq(sequence)
-            record = SeqRecord(sequence, id=name)
-            yield record
+            sequences[name] = sequence
+        self._names = iter(self.sequences)
+
+    def __next__(self):
+        """Return the next entry."""
+        name = next(self._names)
+        sequence = self.sequences[name]
+        return SeqRecord(sequence, id=name)
 
     def __getitem__(self, name):
         """Return sequence associated with given name as a SeqRecord object."""
@@ -250,7 +252,6 @@ class TwoBitIterator(SequenceIterator):
             sequence = self.sequences[name]
         except ValueError:
             raise KeyError(name) from None
-        sequence = Seq(sequence)
         return SeqRecord(sequence, id=name)
 
     def keys(self):

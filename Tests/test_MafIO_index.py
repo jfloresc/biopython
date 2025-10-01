@@ -12,17 +12,17 @@ except ImportError:
     sqlite3 = None
 
 import os
-import unittest
-import tempfile
 import shutil
 import sys
-
-from Bio.AlignIO.MafIO import MafIndex
-from Bio import SeqIO
-from Bio.Seq import Seq
-from Bio.SeqRecord import SeqRecord
+import tempfile
+import unittest
 
 from seq_tests_common import SeqRecordTestBaseClass
+
+from Bio import SeqIO
+from Bio.AlignIO.MafIO import MafIndex
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 
 
 class StaticMethodTest(unittest.TestCase):
@@ -575,7 +575,7 @@ if sqlite3:
         def test_correct_spliced_sequences_2(self):
             """Checking that spliced sequences are correct.
 
-            We get spliced alignements from following MAF blocks
+            We get spliced alignments from following MAF blocks
             and check that the sequences are correct:
 
             a score=19159.000000

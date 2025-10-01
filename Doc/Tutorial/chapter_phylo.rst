@@ -22,7 +22,7 @@ save it.
 
 Create a simple Newick file named ``simple.dnd`` using your favorite
 text editor, or use
-```simple.dnd`` <https://raw.githubusercontent.com/biopython/biopython/master/Doc/examples/simple.dnd>`__
+`simple.dnd <https://raw.githubusercontent.com/biopython/biopython/master/Doc/examples/simple.dnd>`__
 provided with the Biopython source code:
 
 .. code:: text
@@ -252,7 +252,7 @@ colors will show up there, too.
 .. code:: pycon
 
    >>> import sys
-   >>> n = Phylo.write(tree, sys.stdout, "phyloxml")  # doctest:+ELLIPSIS
+   >>> n = Phylo.write(tree, sys.stdout, "phyloxml")
    <phyloxml ...>
      <phylogeny rooted="true">
        <clade>
@@ -310,7 +310,7 @@ tree, or no trees.
 
    >>> from Bio import Phylo
    >>> tree = Phylo.read("Tests/Nexus/int_node_labels.nwk", "newick")
-   >>> print(tree)  # doctest:+ELLIPSIS
+   >>> print(tree)
    Tree(rooted=False, weight=1.0)
        Clade(branch_length=75.0, name='gymnosperm')
            Clade(branch_length=25.0, name='Coniferales')
@@ -332,7 +332,7 @@ function iterates through each of the trees in the given file:
 
    >>> trees = Phylo.parse("Tests/PhyloXML/phyloxml_examples.xml", "phyloxml")
    >>> for tree in trees:
-   ...     print(tree)  # doctest:+ELLIPSIS
+   ...     print(tree)
    ...
    Phylogeny(description='phyloXML allows to use either a "branch_length" attribute...', name='example from Prof. Joe Felsenstein's book "Inferring Phyl...', rooted=True)
        Clade()
@@ -352,7 +352,7 @@ function:
    >>> Phylo.write(tree1, "tree1.nwk", "newick")
    1
    >>> Phylo.write(trees, "other_trees.xml", "phyloxml")  # write the remaining trees
-   12
+   13
 
 Convert files between any of the supported formats with the ``convert``
 function:
@@ -364,7 +364,7 @@ function:
    >>> Phylo.convert("tree1.nwk", "newick", "tree1.xml", "nexml")
    1
    >>> Phylo.convert("other_trees.xml", "phyloxml", "other_trees.nex", "nexus")
-   12
+   13
 
 To use strings as input or output instead of actual files, use
 ``StringIO`` as you would with SeqIO and AlignIO:
@@ -681,7 +681,7 @@ tree intact, make a complete copy of the tree first, using Python’s
    sort clades deepest-to-shallowest.
 
 ``prune``
-   Prunes a terminal clade from the tree. If taxon is from a
+   Prunes a terminal clade from the tree. If the taxon is from a
    bifurcation, the connecting node will be collapsed and its branch
    length added to remaining terminal node. This might no longer be a
    meaningful value.

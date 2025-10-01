@@ -60,17 +60,17 @@ Exceptions:
    string.
 
 """
+
 import functools
 import re
 import warnings
-from abc import ABC, abstractmethod
+from abc import ABC
+from abc import abstractmethod
 
-from Bio import BiopythonDeprecationWarning
 from Bio import BiopythonParserWarning
 from Bio.Seq import MutableSeq
 from Bio.Seq import reverse_complement
 from Bio.Seq import Seq
-
 
 # Regular expressions for location parsing
 
@@ -121,7 +121,6 @@ assert _split(
     "NC_016402.1:6618..6676",
     "181647..181905",
 ]
-
 
 _pair_location = r"[<>]?-?\d+\.\.[<>]?-?\d+"
 
@@ -224,92 +223,6 @@ class SeqFeature:
             self.qualifiers.update(qualifiers)
         if sub_features is not None:
             raise TypeError("Rather than sub_features, use a CompoundLocation")
-
-    def _get_strand(self):
-        """Get function for the strand property (PRIVATE)."""
-        warnings.warn(
-            "Please use .location.strand rather than .strand",
-            BiopythonDeprecationWarning,
-        )
-        return self.location.strand
-
-    def _set_strand(self, value):
-        """Set function for the strand property (PRIVATE)."""
-        warnings.warn(
-            "Please use .location.strand rather than .strand",
-            BiopythonDeprecationWarning,
-        )
-        try:
-            self.location.strand = value
-        except AttributeError:
-            if self.location is None:
-                if value is not None:
-                    raise ValueError("Can't set strand without a location.") from None
-            else:
-                raise
-
-    strand = property(
-        fget=_get_strand,
-        fset=_set_strand,
-        doc="Alias for the location's strand (DEPRECATED).",
-    )
-
-    def _get_ref(self):
-        """Get function for the reference property (PRIVATE)."""
-        warnings.warn(
-            "Please use .location.ref rather than .ref",
-            BiopythonDeprecationWarning,
-        )
-        try:
-            return self.location.ref
-        except AttributeError:
-            return None
-
-    def _set_ref(self, value):
-        """Set function for the reference property (PRIVATE)."""
-        warnings.warn(
-            "Please use .location.ref rather than .ref",
-            BiopythonDeprecationWarning,
-        )
-        try:
-            self.location.ref = value
-        except AttributeError:
-            if self.location is None:
-                if value is not None:
-                    raise ValueError("Can't set ref without a location.") from None
-            else:
-                raise
-
-    ref = property(
-        fget=_get_ref,
-        fset=_set_ref,
-        doc="Alias for the location's ref (DEPRECATED).",
-    )
-
-    def _get_ref_db(self):
-        """Get function for the database reference property (PRIVATE)."""
-        warnings.warn(
-            "Please use .location.ref_db rather than .ref_db",
-            BiopythonDeprecationWarning,
-        )
-        try:
-            return self.location.ref_db
-        except AttributeError:
-            return None
-
-    def _set_ref_db(self, value):
-        """Set function for the database reference property (PRIVATE)."""
-        warnings.warn(
-            "Please use .location.ref_db rather than .ref_db",
-            BiopythonDeprecationWarning,
-        )
-        self.location.ref_db = value
-
-    ref_db = property(
-        fget=_get_ref_db,
-        fset=_set_ref_db,
-        doc="Alias for the location's ref_db (DEPRECATED).",
-    )
 
     def __eq__(self, other):
         """Check if two SeqFeature objects should be considered equal."""
@@ -712,6 +625,7 @@ class Location(ABC):
         """Represent the Location object as a string for debugging."""
         return f"{self.__class__.__name__}(...)"
 
+    @staticmethod
     def fromstring(text, length=None, circular=False, stranded=True):
         """Create a Location object from a string.
 
@@ -1028,20 +942,22 @@ class SimpleLocation(Location):
             # Attempt to fix features that span the origin
             s_pos = Position.fromstring(s, -1)
             e_pos = Position.fromstring(e)
-            if s_pos >= e_pos:
-                # There is likely a problem with origin wrapping.
+            # We have seen Ensembl data in "GenBank Format" with length zero in the LOCUS
+            # and variation features with s_pos >= e_pos - they are not origin wrapping!
+            if e_pos <= s_pos and length and s_pos < length:
+                # Assuming this is meant to be origin wrapping.
                 # Create a CompoundLocation of the wrapped feature,
                 # consisting of two SimpleLocation objects to extend to
                 # the list of feature locations.
                 if not circular:
                     raise LocationParserError(
-                        f"it appears that '{text}' is a feature that spans the origin, but the sequence topology is undefined"
+                        f"it appears that '{text}' is a feature that spans the"
+                        " origin, but the sequence topology is undefined"
                     )
                 warnings.warn(
-                    "Attempting to fix invalid location %r as "
-                    "it looks like incorrect origin wrapping. "
-                    "Please fix input file, this could have "
-                    "unintended behavior." % text,
+                    f"Attempting to fix invalid location {text!r} as it looks"
+                    " like incorrect origin wrapping. Please fix input file,"
+                    " this could have unintended behavior.",
                     BiopythonParserWarning,
                 )
 
@@ -1391,7 +1307,7 @@ class SimpleLocation(Location):
         return f_seq
 
 
-FeatureLocation = SimpleLocation  # OBSOLETE; for backward compatability only.
+FeatureLocation = SimpleLocation  # OBSOLETE; for backward compatibility only.
 
 
 class CompoundLocation(Location):
@@ -1641,11 +1557,13 @@ class CompoundLocation(Location):
     def _flip(self, length):
         """Return a copy of the locations after the parent is reversed (PRIVATE).
 
-        Note that the order of the parts is NOT reversed too. Consider a CDS
-        on the forward strand with exons small, medium and large (in length).
-        Once we change the frame of reference to the reverse complement strand,
-        the start codon is still part of the small exon, and the stop codon
-        still part of the large exon - so the part order remains the same!
+        Note that the order of the parts is NOT reversed unless all parts
+        have strand=None, since the order has meaning for stranded features.
+        Consider a CDS on the forward strand with exons small, medium
+        and large (in length). Once we change the frame of reference
+        to the reverse complement strand, the start codon is still part of
+        the small exon, and the stop codon still part of the large exon -
+        so the part order remains the same!
 
         Here is an artificial example, were the features map to the two upper
         case regions and the lower case runs of n are not used:
@@ -1709,10 +1627,27 @@ class CompoundLocation(Location):
         versions of Biopython which would have given join{[5:29](-), [37:52](-)}
         and the translation would have wrongly been "EXAMPLE*SILLY" instead.
 
+        When all the parts have strand None, the order of the parts is reversed.
+        In principle this does not change the meaning of the location, but improves
+        the representation of feature locations spanning the origin in circular
+        molecules.
+
+        >>> loc = SimpleLocation(4, 6, None) + SimpleLocation(0, 1, None)
+        >>> print(loc)
+        join{[4:6], [0:1]}
+        >>> print(loc._flip(6))
+        join{[5:6], [0:2]}
+
+        join{[0:2], [5:6]} would not be properly represented in SnapGene, Benchling, etc.
         """
-        return CompoundLocation(
-            [loc._flip(length) for loc in self.parts], self.operator
-        )
+        if all(loc.strand is None for loc in self.parts):
+            return CompoundLocation(
+                [loc._flip(length) for loc in self.parts[::-1]], self.operator
+            )
+        else:
+            return CompoundLocation(
+                [loc._flip(length) for loc in self.parts], self.operator
+            )
 
     @property
     def start(self):

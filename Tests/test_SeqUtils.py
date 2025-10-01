@@ -4,6 +4,7 @@
 # license.  Please see the LICENSE file that should have been included
 # as part of this package.
 """Tests for SeqUtils module."""
+
 import os
 import unittest
 
@@ -11,6 +12,7 @@ from Bio import SeqIO
 from Bio.Seq import MutableSeq
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
+from Bio.SeqUtils import CodonAdaptationIndex
 from Bio.SeqUtils import gc_fraction
 from Bio.SeqUtils import GC_skew
 from Bio.SeqUtils import seq1
@@ -19,7 +21,6 @@ from Bio.SeqUtils.CheckSum import crc32
 from Bio.SeqUtils.CheckSum import crc64
 from Bio.SeqUtils.CheckSum import gcg
 from Bio.SeqUtils.CheckSum import seguid
-from Bio.SeqUtils import CodonAdaptationIndex
 from Bio.SeqUtils.lcc import lcc_mult
 from Bio.SeqUtils.lcc import lcc_simp
 
@@ -82,7 +83,6 @@ class SeqUtilsTests(unittest.TestCase):
         self.assertEqual(aa_initial, aa_optimized)
         with self.assertRaises(KeyError):
             cai.optimize("CAU", "protein", strict=False)
-        self.maxDiff = None
         self.assertEqual(
             str(cai),
             """\
@@ -365,6 +365,13 @@ TTT	0.886
         self.assertAlmostEqual(gc_fraction(seq, "ignore"), 0.75, places=3)
         self.assertAlmostEqual(gc_fraction(seq, "weighted"), 0.75, places=3)
         self.assertAlmostEqual(gc_fraction(seq, "remove"), 0.75, places=3)
+
+        # Test RNA sequence
+
+        seq = "GGAUCUUCGGAUCU"
+        self.assertAlmostEqual(gc_fraction(seq, "ignore"), 0.5, places=3)
+        self.assertAlmostEqual(gc_fraction(seq, "weighted"), 0.5, places=3)
+        self.assertAlmostEqual(gc_fraction(seq, "remove"), 0.5, places=3)
 
         # Test ambiguous nucleotide behaviour
 

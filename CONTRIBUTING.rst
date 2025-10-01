@@ -94,13 +94,11 @@ request. These will run most of the Biopython tests (although not with all the
 optional dependencies included), plus also style checks using ``pre-commit``
 (also used for git pre-commit checks, see above).
 
-**The continuous integration checks must pass before your pull request will be
-merged.**
-
 The continuous integration tests collect test coverage information via
 CodeCov: https://codecov.io/github/biopython/biopython/
 
-Ideally the CodeCov checks will also pass, but we currently do not insist on
+**The continuous integration checks must pass before your pull request will be
+merged.** Ideally the CodeCov checks will also pass, but we currently do not insist on
 this when reviewing pull requests.
 
 Contributing to the Biopython Tutorial

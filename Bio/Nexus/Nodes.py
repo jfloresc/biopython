@@ -16,7 +16,7 @@ Subclassed by Nexus.Trees to store phylogenetic trees.
 Bug reports to Frank Kauff (fkauff@biologie.uni-kl.de)
 """
 
-from typing import Dict, List, Optional
+from typing import Optional
 
 
 class ChainException(Exception):
@@ -32,7 +32,7 @@ class Chain:
 
     def __init__(self) -> None:
         """Initialize a node chain."""
-        self.chain: Dict[int, "Node"] = {}
+        self.chain: dict[int, Node] = {}
         self.id = -1
 
     def _get_id(self) -> int:
@@ -40,11 +40,11 @@ class Chain:
         self.id += 1
         return self.id
 
-    def all_ids(self) -> List[int]:
+    def all_ids(self) -> list[int]:
         """Return a list of all node ids."""
         return list(self.chain.keys())
 
-    def add(self, node: "Node", prev: Optional[int] = None) -> int:
+    def add(self, node: "Node", prev: int | None = None) -> int:
         """Attach node to another."""
         if prev is not None and prev not in self.chain:
             raise ChainException("Unknown predecessor: " + str(prev))

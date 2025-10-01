@@ -90,18 +90,18 @@ The dssp data returned for a single residue is a tuple in the form:
 
 """
 
-
-import re
 import os
-from io import StringIO
+import re
 import subprocess
 import warnings
+from io import StringIO
 
+from Bio.Data.PDBData import protein_letters_3to1
+from Bio.Data.PDBData import residue_sasa_scales
 from Bio.PDB.AbstractPropertyMap import AbstractResiduePropertyMap
+from Bio.PDB.MMCIF2Dict import MMCIF2Dict
 from Bio.PDB.PDBExceptions import PDBException
 from Bio.PDB.PDBParser import PDBParser
-from Bio.Data.PDBData import protein_letters_3to1, residue_sasa_scales
-from Bio.PDB.MMCIF2Dict import MMCIF2Dict
 
 # Match C in DSSP
 _dssp_cys = re.compile("[a-z]")
@@ -144,7 +144,7 @@ def dssp_dict_from_pdb_file(in_file, DSSP="dssp", dssp_version="3.9.9"):
         DSSP executable (argument to subprocess)
 
     dssp_version : string
-        Version of DSSP excutable
+        Version of DSSP executable
 
     Returns
     -------
@@ -382,9 +382,7 @@ class DSSP(AbstractResiduePropertyMap):
             # calling 'dssp' will not work in some operating systems
             # (Debian distribution of DSSP includes a symlink for 'dssp' argument)
             try:
-                version_string = subprocess.check_output(
-                    [dssp, "--version"], universal_newlines=True
-                )
+                version_string = subprocess.check_output([dssp, "--version"], text=True)
                 dssp_version = re.search(r"\s*([\d.]+)", version_string).group(1)
                 dssp_dict, dssp_keys = dssp_dict_from_pdb_file(
                     in_file, dssp, dssp_version
@@ -396,9 +394,7 @@ class DSSP(AbstractResiduePropertyMap):
                     dssp = "dssp"
                 else:
                     raise
-                version_string = subprocess.check_output(
-                    [dssp, "--version"], universal_newlines=True
-                )
+                version_string = subprocess.check_output([dssp, "--version"], text=True)
                 dssp_version = re.search(r"\s*([\d.]+)", version_string).group(1)
                 dssp_dict, dssp_keys = dssp_dict_from_pdb_file(
                     in_file, dssp, dssp_version

@@ -7,22 +7,23 @@
 Initially this takes matched tests of GenBank and FASTA files from the NCBI
 and confirms they are consistent using our different parsers.
 """
+
 import unittest
 
 try:
-    import numpy
+    import numpy as np
 except ImportError:
-    numpy = None  # type: ignore
+    np = None  # type: ignore
 
-from Bio import BiopythonDeprecationWarning, SeqIO
+from Bio import SeqIO
 from Bio.Seq import MutableSeq
 from Bio.Seq import Seq
 from Bio.SeqFeature import AfterPosition
 from Bio.SeqFeature import BeforePosition
 from Bio.SeqFeature import ExactPosition
-from Bio.SeqFeature import SimpleLocation
 from Bio.SeqFeature import OneOfPosition
 from Bio.SeqFeature import SeqFeature
+from Bio.SeqFeature import SimpleLocation
 from Bio.SeqFeature import WithinPosition
 from Bio.SeqRecord import SeqRecord
 
@@ -112,6 +113,10 @@ class SeqRecordCreation(unittest.TestCase):
         with self.assertRaises(TypeError):
             SeqRecord(Seq("ACGT"), name={})
 
+    def test_valid_seq(self):
+        with self.assertRaises(TypeError):
+            SeqRecord("ACGT")
+
     def test_valid_description(self):
         with self.assertRaises(TypeError):
             SeqRecord(Seq("ACGT"), description={})
@@ -128,10 +133,20 @@ class SeqRecordCreation(unittest.TestCase):
         with self.assertRaises(TypeError):
             SeqRecord(Seq("ACGT"), features={})
 
-    def test_deprecated_string_seq(self):
-        with self.assertWarns(BiopythonDeprecationWarning):
-            record = SeqRecord("ACGT")
-            self.assertTrue(isinstance(record._seq, Seq))
+    def test_default_properties(self):
+        seqobj = Seq("A")
+        default__dict__ = {
+            "_seq": seqobj,
+            "id": "<unknown id>",
+            "name": "<unknown name>",
+            "description": "<unknown description>",
+            "dbxrefs": [],
+            "annotations": {},
+            "_per_letter_annotations": None,
+            "features": [],
+        }
+        bsr = SeqRecord(seqobj)
+        self.assertEqual(bsr.__dict__, default__dict__)
 
 
 class SeqRecordMethods(unittest.TestCase):
@@ -226,6 +241,20 @@ Seq('ABCDEFGHIJKLMNOPQRSTUVWZYX')"""
 
     def test_upper(self):
         self.assertEqual("ABCDEFGHIJKLMNOPQRSTUVWZYX", self.record.lower().upper().seq)
+        seqobj = Seq("A")
+        default__dict__ = {
+            "_seq": seqobj,
+            "id": "<unknown id>",
+            "name": "<unknown name>",
+            "description": "<unknown description>",
+            "dbxrefs": [],
+            "annotations": {},
+            "_per_letter_annotations": None,
+            "features": [],
+        }
+        bsr = SeqRecord(seqobj)
+        bsru = bsr.upper()
+        self.assertEqual(bsru.__dict__, default__dict__)
 
     def test_lower(self):
         self.assertEqual("abcdefghijklmnopqrstuvwzyx", self.record.lower().seq)
@@ -243,8 +272,8 @@ Seq('ABCDEFGHIJKLMNOPQRSTUVWZYX')"""
         self.assertEqual("BC", self.record[1:3].seq)
         with self.assertRaises(ValueError):
             c = self.record["a"].seq
-        if numpy is not None:
-            start, stop = numpy.array([1, 3])  # numpy integers
+        if np is not None:
+            start, stop = np.array([1, 3])  # numpy integers
             self.assertEqual("B", self.record[start])
             self.assertEqual("BC", self.record[start:stop].seq)
 
@@ -505,6 +534,17 @@ class SeqRecordMethodsMore(unittest.TestCase):
             t.annotations, {"organism": "bombyx", "molecule_type": "protein"}
         )
         self.assertFalse(t.letter_annotations)
+
+    def test_no_side_effects(self):
+        a = SeqRecord(Seq("AA"))
+        self.assertIsNone(a._per_letter_annotations)
+        a.reverse_complement()
+        self.assertIsNone(a._per_letter_annotations)
+
+        a = SeqRecord(Seq("AA"))
+        self.assertIsNone(a._per_letter_annotations)
+        a.translate()
+        self.assertIsNone(a._per_letter_annotations)
 
     def test_lt_exception(self):
         def lt():

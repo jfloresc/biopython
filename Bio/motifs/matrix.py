@@ -32,7 +32,8 @@ class GenericPositionMatrix(dict):
                 self.length = len(values[letter])
             elif self.length != len(values[letter]):
                 raise Exception("data has inconsistent lengths")
-            self[letter] = list(values[letter])
+            # Cast any numpy floats into Python floats:
+            self[letter] = [float(_) for _ in values[letter]]
         self.alphabet = alphabet
 
     def __str__(self):
@@ -173,17 +174,25 @@ class GenericPositionMatrix(dict):
             "C": "C",
             "G": "G",
             "T": "T",
+            "U": "U",
             "AC": "M",
             "AG": "R",
             "AT": "W",
+            "AU": "W",
             "CG": "S",
             "CT": "Y",
+            "CU": "Y",
             "GT": "K",
+            "GU": "K",
             "ACG": "V",
             "ACT": "H",
+            "ACU": "H",
             "AGT": "D",
+            "AGU": "D",
             "CGT": "B",
+            "CGU": "B",
             "ACGT": "N",
+            "ACGU": "N",
         }
         sequence = ""
         for i in range(self.length):
@@ -236,7 +245,7 @@ class GenericPositionMatrix(dict):
            1.0, then only columns of identical letters contribute to the
            consensus. Default value is zero.
          - setcase             - threshold for the positive matches, divided by
-           the total count in a column, above which the consensus is is
+           the total count in a column, above which the consensus is in
            upper-case and below which the consensus is in lower-case. By
            default, this is equal to 0.5.
         """

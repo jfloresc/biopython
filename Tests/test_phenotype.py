@@ -8,9 +8,9 @@
 """Tests for the Bio.phenotype module."""
 
 try:
-    import numpy
+    import numpy as np
 
-    del numpy
+    del np
 except ImportError:
     from Bio import MissingExternalDependencyError
 
@@ -20,12 +20,10 @@ except ImportError:
 
 import json
 import unittest
-
+import warnings
 from io import StringIO
 
 from Bio import BiopythonExperimentalWarning
-
-import warnings
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore", BiopythonExperimentalWarning)

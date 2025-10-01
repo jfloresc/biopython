@@ -11,12 +11,12 @@ Bio.File defines private classes used in Bio.SeqIO and Bio.SearchIO for
 indexing files. These are not intended for direct use.
 """
 
-import os
+import collections.abc
 import contextlib
 import itertools
-import collections.abc
-
-from abc import ABC, abstractmethod
+import os
+from abc import ABC
+from abc import abstractmethod
 
 try:
     import sqlite3
@@ -325,7 +325,7 @@ class _SQLiteManySeqFilesDict(_IndexedSeqFileDict):
             self._build_index()
 
     def _load_index(self):
-        """Call from __init__ to re-use an existing index (PRIVATE)."""
+        """Call from __init__ to reuse an existing index (PRIVATE)."""
         index_filename = self._index_filename
         relative_path = self._relative_path
         filenames = self._filenames

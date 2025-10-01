@@ -8,11 +8,11 @@
 
 version: 2.1
 orbs:
-  codecov: codecov/codecov@1.0.2
+  codecov: codecov/codecov@5.0.3
 jobs:
   build:
     docker:
-      - image: cimg/python:3.9
+      - image: cimg/python:3.10
     steps:
       - checkout
       - run:
@@ -37,7 +37,7 @@ jobs:
           name: Sphinx
           command: |
             make -C Doc/ html
-      - deploy:
+      - run:
           name: Deploy Sphinx documentation
           command: |
             bash .github/deploy_docs.sh
@@ -46,9 +46,10 @@ jobs:
           command: |
             # Use the unzipped tar-ball where built wheel
             cd biopython-*/Tests/
-            rm -rf coverage.xml
-            coverage run run_tests.py --offline
+            coverage run --source Bio,BioSQL --source Bio,BioSQL run_tests.py --offline
             echo "Tests run"
             coverage xml
       - codecov/upload:
-          file: biopython-*/Tests/coverage.xml
+          upload_name: CircleCI
+          disable_search: true
+          files: biopython-*/Tests/coverage.xml

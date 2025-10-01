@@ -5,19 +5,15 @@
 
 """Parser for PDB files."""
 
-
 import warnings
 
 import numpy as np
 
 from Bio.File import as_handle
-
+from Bio.PDB.parse_pdb_header import _parse_pdb_header_list
 from Bio.PDB.PDBExceptions import PDBConstructionException
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
-
 from Bio.PDB.StructureBuilder import StructureBuilder
-from Bio.PDB.parse_pdb_header import _parse_pdb_header_list
-
 
 # If PDB spec says "COLUMNS 18-20" this means line[17:20]
 
@@ -386,9 +382,7 @@ class PDBParser:
                 structure_builder.set_sigatm(sigatm_array)
             elif record_type not in allowed_records:
                 warnings.warn(
-                    "Ignoring unrecognized record '{}' at line {}".format(
-                        record_type, global_line_counter
-                    ),
+                    f"Ignoring unrecognized record '{record_type}' at line {global_line_counter}",
                     PDBConstructionWarning,
                 )
             local_line_counter += 1
