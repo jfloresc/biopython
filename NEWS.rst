@@ -16,6 +16,7 @@ The latest news is at the top of this file.
 This release of Biopython supports Python 3.10, 3.11, 3.12 and 3.13.  It
 has also been tested on PyPy3.10 v7.3.17.
 
+<<<<<<< HEAD
 ``Bio.SearchIO`` now supports parsing the tabular and plain text output of
 `Infernal <http://eddylab.org/infernal/>` (v1.0.0+) RNA search tool. The
 format are ``infernal-tab`` and ``infernal-text``.
@@ -51,6 +52,12 @@ possible, especially the following contributors:
 - Rachel Stern (first contribution)
 - Oliver Wissett (first contribution)
 - Samuel Prince (first contribution)
+=======
+The RCSB PDB deprecated the MMTF format and encouraged users to use BinaryCIF
+instead (`see announcement <https://www.rcsb.org/news/feature/65a1af31c76ca3abcc925d0c>`_).
+Biopython already includes a BinaryCIF parser, so we updated PDBList to support
+retrieving PDB structures in the BinaryCIF format and deprecate the MMTF format.
+>>>>>>> 735ce65f17ef3e139c7faacadbf94501a5ba8f9a
 
 15 January 2025: Biopython 1.85
 ===============================
