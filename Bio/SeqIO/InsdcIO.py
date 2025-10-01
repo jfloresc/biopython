@@ -29,9 +29,11 @@ http://imgt.cines.fr/download/LIGM-DB/ftable_doc.html
 http://www.ebi.ac.uk/imgt/hla/docs/manual.html
 
 """
-import warnings
 
-from datetime import datetime
+import warnings
+from datetime import datetime, date as datetime_date
+from string import ascii_letters
+from string import digits
 
 from Bio import BiopythonWarning
 from Bio import SeqFeature
@@ -45,6 +47,9 @@ from .Interfaces import _get_seq_string
 from .Interfaces import SequenceIterator
 from .Interfaces import SequenceWriter
 
+# Set containing all characters allowed in feature qualifier keys. See
+# https://www.insdc.org/submitting-standards/feature-table/#3.1
+_allowed_table_component_name_chars = set(ascii_letters + digits + "_-'*")
 
 # NOTE
 # ====
@@ -56,6 +61,8 @@ from .Interfaces import SequenceWriter
 
 class GenBankIterator(SequenceIterator):
     """Parser for GenBank files."""
+
+    modes = "t"
 
     def __init__(self, source):
         """Break up a Genbank file into SeqRecord objects.
@@ -94,16 +101,18 @@ class GenBankIterator(SequenceIterator):
         AF297471.1
 
         """
-        super().__init__(source, mode="t", fmt="GenBank")
+        super().__init__(source, fmt="GenBank")
+        self.records = GenBankScanner(debug=0).parse_records(self.stream)
 
-    def parse(self, handle):
-        """Start parsing the file, and return a SeqRecord generator."""
-        records = GenBankScanner(debug=0).parse_records(handle)
-        return records
+    def __next__(self):
+        """Return the next SeqRecord."""
+        return next(self.records)
 
 
 class EmblIterator(SequenceIterator):
     """Parser for EMBL files."""
+
+    modes = "t"
 
     def __init__(self, source):
         """Break up an EMBL file into SeqRecord objects.
@@ -148,16 +157,18 @@ class EmblIterator(SequenceIterator):
         CQ797900.1
 
         """
-        super().__init__(source, mode="t", fmt="EMBL")
+        super().__init__(source, fmt="EMBL")
+        self.records = EmblScanner(debug=0).parse_records(self.stream)
 
-    def parse(self, handle):
-        """Start parsing the file, and return a SeqRecord generator."""
-        records = EmblScanner(debug=0).parse_records(handle)
-        return records
+    def __next__(self):
+        """Return the next SeqRecord."""
+        return next(self.records)
 
 
 class ImgtIterator(SequenceIterator):
     """Parser for IMGT files."""
+
+    modes = "t"
 
     def __init__(self, source):
         """Break up an IMGT file into SeqRecord objects.
@@ -169,16 +180,18 @@ class ImgtIterator(SequenceIterator):
         Note that for genomes or chromosomes, there is typically only
         one record.
         """
-        super().__init__(source, mode="t", fmt="IMGT")
+        super().__init__(source, fmt="IMGT")
+        self.records = _ImgtScanner(debug=0).parse_records(self.stream)
 
-    def parse(self, handle):
-        """Start parsing the file, and return a SeqRecord generator."""
-        records = _ImgtScanner(debug=0).parse_records(handle)
-        return records
+    def __next__(self):
+        """Return the next SeqRecord."""
+        return next(self.records)
 
 
 class GenBankCdsFeatureIterator(SequenceIterator):
     """Parser for GenBank files, creating a SeqRecord for each CDS feature."""
+
+    modes = "t"
 
     def __init__(self, source):
         """Break up a Genbank file into SeqRecord objects for each CDS feature.
@@ -189,15 +202,18 @@ class GenBankCdsFeatureIterator(SequenceIterator):
         many CDS features.  These are returned as with the stated amino acid
         translation sequence (if given).
         """
-        super().__init__(source, mode="t", fmt="GenBank")
+        super().__init__(source, fmt="GenBank")
+        self.records = GenBankScanner(debug=0).parse_cds_features(self.stream)
 
-    def parse(self, handle):
-        """Start parsing the file, and return a SeqRecord generator."""
-        return GenBankScanner(debug=0).parse_cds_features(handle)
+    def __next__(self):
+        """Return the next SeqRecord."""
+        return next(self.records)
 
 
 class EmblCdsFeatureIterator(SequenceIterator):
     """Parser for EMBL files, creating a SeqRecord for each CDS feature."""
+
+    modes = "t"
 
     def __init__(self, source):
         """Break up a EMBL file into SeqRecord objects for each CDS feature.
@@ -208,11 +224,12 @@ class EmblCdsFeatureIterator(SequenceIterator):
         many CDS features.  These are returned as with the stated amino acid
         translation sequence (if given).
         """
-        super().__init__(source, mode="t", fmt="EMBL")
+        super().__init__(source, fmt="EMBL")
+        self.records = EmblScanner(debug=0).parse_cds_features(self.stream)
 
-    def parse(self, handle):
-        """Start parsing the file, and return a SeqRecord generator."""
-        return EmblScanner(debug=0).parse_cds_features(handle)
+    def __next__(self):
+        """Return the next SeqRecord."""
+        return next(self.records)
 
 
 def _insdc_feature_position_string(pos, offset=0):
@@ -374,7 +391,22 @@ class _InsdcWriter(SequenceWriter):
         "transl_table",
     )
 
+    modes = "t"
+
     def _write_feature_qualifier(self, key, value=None, quote=None):
+        if not _allowed_table_component_name_chars.issuperset(key):
+            warnings.warn(
+                f"Feature qualifier key '{key}' contains characters not"
+                " allowed by standard.",
+                BiopythonWarning,
+            )
+        if len(key) > 20:
+            warnings.warn(
+                f"Feature qualifier key '{key}' is longer than maximum length"
+                " specified by standard (20 characters).",
+                BiopythonWarning,
+            )
+
         if value is None:
             # Value-less entry like /pseudo
             self.handle.write(f"{self.QUALIFIER_INDENT_STR}/{key}\n")
@@ -438,8 +470,22 @@ class _InsdcWriter(SequenceWriter):
     def _write_feature(self, feature, record_length):
         """Write a single SeqFeature object to features table (PRIVATE)."""
         assert feature.type, feature
-        location = _insdc_location_string(feature.location, record_length)
+
         f_type = feature.type.replace(" ", "_")
+        if not _allowed_table_component_name_chars.issuperset(f_type):
+            warnings.warn(
+                f"Feature key '{f_type}' contains characters not allowed by"
+                " standard.",
+                BiopythonWarning,
+            )
+        if len(f_type) > 15:
+            warnings.warn(
+                f"Feature key '{f_type}' is longer than maximum length"
+                " specified by standard (15 characters).",
+                BiopythonWarning,
+            )
+
+        location = _insdc_location_string(feature.location, record_length)
         line = (
             (self.QUALIFIER_INDENT_TMP % f_type)[: self.QUALIFIER_INDENT]
             + self._wrap_location(location)
@@ -587,9 +633,6 @@ class GenBankWriter(_InsdcWriter):
         # Cope with a list of one string:
         if isinstance(date, list) and len(date) == 1:
             date = date[0]
-        if isinstance(date, datetime):
-            date = date.strftime("%d-%b-%Y").upper()
-
         months = [
             "JAN",
             "FEB",
@@ -604,11 +647,21 @@ class GenBankWriter(_InsdcWriter):
             "NOV",
             "DEC",
         ]
+        if isinstance(date, datetime_date):
+            date = f"{date.day:02d}-{months[date.month - 1]}-{date.year}"
         if not isinstance(date, str) or len(date) != 11:
+            warnings.warn(
+                f"Invalid date format provided {record.annotations['date']!r}, using default {default!r}",
+                BiopythonWarning,
+            )
             return default
         try:
             datetime(int(date[-4:]), months.index(date[3:6]) + 1, int(date[0:2]))
         except ValueError:
+            warnings.warn(
+                f"Invalid date provided {record.annotations['date']!r}, using default {default!r}",
+                BiopythonWarning,
+            )
             date = default
         return date
 

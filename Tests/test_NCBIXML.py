@@ -6,6 +6,7 @@
 
 import os
 import unittest
+
 from Bio.Blast import NCBIXML
 
 
@@ -529,7 +530,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 76)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 1.66928e-10)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 1.66928e-10, places=15)
 
         alignment = alignments[24]
         self.assertEqual(
@@ -537,7 +538,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 77)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 2.18014e-10)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 2.18014e-10, places=15)
 
         alignment = alignments[25]
         self.assertEqual(
@@ -545,7 +546,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 74)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 3.71876e-10)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 3.71876e-10, places=15)
 
         alignment = alignments[26]
         self.assertEqual(
@@ -553,7 +554,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 88)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 3.71876e-10)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 3.71876e-10, places=15)
 
         alignment = alignments[27]
         self.assertEqual(
@@ -561,7 +562,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 79)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 4.85685e-10)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 4.85685e-10, places=15)
 
         alignment = alignments[28]
         self.assertEqual(
@@ -569,7 +570,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 79)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 6.34325e-10)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 6.34325e-10, places=15)
 
         alignment = alignments[29]
         self.assertEqual(
@@ -577,7 +578,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 81)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 1.08199e-09)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 1.08199e-09, places=14)
 
         alignment = alignments[30]
         self.assertEqual(
@@ -585,7 +586,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 83)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 1.41313e-09)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 1.41313e-09, places=14)
 
         alignment = alignments[31]
         self.assertEqual(
@@ -593,7 +594,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 82)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 1.5624e-08)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 1.5624e-08, places=12)
 
         alignment = alignments[32]
         self.assertEqual(
@@ -601,7 +602,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 90)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 2.04055e-08)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 2.04055e-08, places=13)
 
         alignment = alignments[33]
         self.assertEqual(
@@ -609,7 +610,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 70)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 3.48066e-08)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 3.48066e-08, places=13)
 
         alignment = alignments[34]
         self.assertEqual(
@@ -617,7 +618,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 90)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 5.9371e-08)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 5.9371e-08, places=12)
 
         alignment = alignments[35]
         self.assertEqual(
@@ -625,7 +626,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 67)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 1.32265e-07)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 1.32265e-07, places=12)
 
         alignment = alignments[36]
         self.assertEqual(
@@ -633,7 +634,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 76)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 1.72743e-07)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 1.72743e-07, places=12)
 
         alignment = alignments[37]
         self.assertEqual(
@@ -641,19 +642,19 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 73)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 2.2561e-07)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 2.2561e-07, places=11)
 
         alignment = alignments[38]
         self.assertEqual(alignment.title[:50], "gi|455172|gb|AAA24073.1| ORF; putative")
         self.assertEqual(alignment.length, 67)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 2.94655e-07)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 2.94655e-07, places=12)
 
         alignment = alignments[39]
         self.assertEqual(alignment.title[:50], "gi|1224007|gb|AAA92108.1| ORF4")
         self.assertEqual(alignment.length, 192)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 3.84832e-07)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 3.84832e-07, places=12)
 
         alignment = alignments[40]
         self.assertEqual(
@@ -661,7 +662,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 95)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 6.56423e-07)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 6.56423e-07, places=12)
 
         alignment = alignments[41]
         self.assertEqual(
@@ -669,7 +670,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 73)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 1.11969e-06)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 1.11969e-06, places=11)
 
         alignment = alignments[42]
         self.assertEqual(
@@ -677,7 +678,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 84)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 1.46236e-06)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 1.46236e-06, places=11)
 
         alignment = alignments[43]
         self.assertEqual(
@@ -685,7 +686,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 75)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 1.9099e-06)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 1.9099e-06, places=10)
 
         alignment = alignments[44]
         self.assertEqual(
@@ -693,7 +694,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 109)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 2.49441e-06)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 2.49441e-06, places=11)
 
         alignment = alignments[45]
         self.assertEqual(
@@ -701,7 +702,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 77)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 3.25779e-06)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 3.25779e-06, places=11)
 
         alignment = alignments[46]
         self.assertEqual(
@@ -709,7 +710,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 76)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 3.25779e-06)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 3.25779e-06, places=11)
 
         alignment = alignments[47]
         self.assertEqual(
@@ -717,7 +718,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 85)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 3.25779e-06)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 3.25779e-06, places=11)
 
         alignment = alignments[48]
         self.assertEqual(
@@ -725,7 +726,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 65)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 3.25779e-06)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 3.25779e-06, places=11)
 
         alignment = alignments[49]
         self.assertEqual(
@@ -733,7 +734,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 76)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 4.25481e-06)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 4.25481e-06, places=11)
 
         alignment = alignments[50]
         self.assertEqual(
@@ -741,7 +742,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 75)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 4.25481e-06)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 4.25481e-06, places=11)
 
         alignment = alignments[51]
         self.assertEqual(
@@ -749,7 +750,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 76)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 4.25481e-06)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 4.25481e-06, places=11)
 
         alignment = alignments[52]
         self.assertEqual(
@@ -757,7 +758,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 75)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 5.55696e-06)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 5.55696e-06, places=11)
 
         alignment = alignments[53]
         self.assertEqual(
@@ -765,7 +766,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 85)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 5.55696e-06)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 5.55696e-06, places=11)
 
         alignment = alignments[54]
         self.assertEqual(
@@ -773,7 +774,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 76)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 5.55696e-06)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 5.55696e-06, places=11)
 
         alignment = alignments[55]
         self.assertEqual(
@@ -781,7 +782,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 89)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 7.25761e-06)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 7.25761e-06, places=11)
 
         alignment = alignments[56]
         self.assertEqual(
@@ -789,7 +790,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 73)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 9.47873e-06)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 9.47873e-06, places=11)
 
         alignment = alignments[57]
         self.assertEqual(
@@ -797,7 +798,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 77)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 9.47873e-06)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 9.47873e-06, places=11)
 
         alignment = alignments[58]
         self.assertEqual(
@@ -805,7 +806,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 67)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 1.61683e-05)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 1.61683e-05, places=10)
 
         alignment = alignments[59]
         self.assertEqual(
@@ -813,7 +814,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 77)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 1.61683e-05)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 1.61683e-05, places=10)
 
         alignment = alignments[60]
         self.assertEqual(
@@ -821,7 +822,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 79)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 2.75789e-05)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 2.75789e-05, places=10)
 
         alignment = alignments[61]
         self.assertEqual(
@@ -829,7 +830,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 92)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 2.75789e-05)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 2.75789e-05, places=10)
 
         alignment = alignments[62]
         self.assertEqual(
@@ -837,7 +838,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 57)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 2.75789e-05)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 2.75789e-05, places=10)
 
         alignment = alignments[63]
         self.assertEqual(
@@ -845,7 +846,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 75)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 3.60191e-05)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 3.60191e-05, places=10)
 
         alignment = alignments[64]
         self.assertEqual(
@@ -853,7 +854,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 68)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 3.60191e-05)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 3.60191e-05, places=10)
 
         alignment = alignments[65]
         self.assertEqual(
@@ -861,7 +862,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 83)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 4.70425e-05)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 4.70425e-05, places=10)
 
         alignment = alignments[66]
         self.assertEqual(
@@ -869,7 +870,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 90)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 4.70425e-05)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 4.70425e-05, places=10)
 
         alignment = alignments[67]
         self.assertEqual(
@@ -877,7 +878,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 78)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 6.14393e-05)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 6.14393e-05, places=10)
 
         alignment = alignments[68]
         self.assertEqual(
@@ -885,7 +886,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 75)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 8.02423e-05)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 8.02423e-05, places=10)
 
         alignment = alignments[69]
         self.assertEqual(
@@ -893,7 +894,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 70)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 8.02423e-05)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 8.02423e-05, places=10)
 
         alignment = alignments[70]
         self.assertEqual(
@@ -901,7 +902,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 80)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 8.02423e-05)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 8.02423e-05, places=10)
 
         alignment = alignments[71]
         self.assertEqual(
@@ -909,7 +910,7 @@ class TestNCBIXML(unittest.TestCase):
         )
         self.assertEqual(alignment.length, 76)
         self.assertEqual(len(alignment.hsps), 1)
-        self.assertAlmostEqual(alignment.hsps[0].expect, 8.02423e-05)
+        self.assertAlmostEqual(alignment.hsps[0].expect, 8.02423e-05, places=10)
 
         alignment = alignments[72]
         self.assertEqual(

@@ -7,14 +7,16 @@
 Initially this takes matched tests of GenBank and FASTA files from the NCBI
 and confirms they are consistent using our different parsers.
 """
+import datetime
+import locale
 import os
 import unittest
 import warnings
-
 from io import StringIO
 
+from test_SeqIO import SeqIOTestBaseClass
+
 from Bio import BiopythonWarning
-from Bio import BiopythonDeprecationWarning
 from Bio import SeqIO
 from Bio.Data.CodonTable import TranslationError
 from Bio.Seq import MutableSeq
@@ -25,14 +27,13 @@ from Bio.SeqFeature import AfterPosition
 from Bio.SeqFeature import BeforePosition
 from Bio.SeqFeature import CompoundLocation
 from Bio.SeqFeature import ExactPosition
-from Bio.SeqFeature import SimpleLocation
 from Bio.SeqFeature import OneOfPosition
 from Bio.SeqFeature import SeqFeature
+from Bio.SeqFeature import SimpleLocation
 from Bio.SeqFeature import UnknownPosition
 from Bio.SeqFeature import WithinPosition
 from Bio.SeqIO.InsdcIO import _insdc_location_string
 from Bio.SeqRecord import SeqRecord
-from test_SeqIO import SeqIOTestBaseClass
 
 
 def _get_location_string(feature, record_length):
@@ -94,15 +95,8 @@ class SeqIOFeatureTestBaseClass(SeqIOTestBaseClass):
         self.assertEqual(old.location.start, new.location.start, msg=msg)
         if old.location.strand is not None:
             self.assertEqual(old.location.strand, new.location.strand, msg=msg)
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", category=BiopythonDeprecationWarning)
-                self.assertEqual(old.location.strand, new.strand)
         self.assertEqual(old.location.ref, new.location.ref, msg=msg)
         self.assertEqual(old.location.ref_db, new.location.ref_db, msg=msg)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=BiopythonDeprecationWarning)
-            self.assertEqual(old.location.ref, new.ref)
-            self.assertEqual(old.location.ref_db, new.ref_db)
         self.assertEqual(
             getattr(old.location, "operator", None),
             getattr(new.location, "operator", None),
@@ -215,6 +209,27 @@ class SeqIOFeatureTestBaseClass(SeqIOTestBaseClass):
                         # Not held in EMBL files
                         self.assertEqual(r1.medline_id, r2.medline_id, msg=msg)
                     self.assertEqual(r1.pubmed_id, r2.pubmed_id, msg=msg)
+            elif key == "date" and (
+                isinstance(old.annotations[key], datetime.datetime)
+                or isinstance(old.annotations[key], datetime.date)
+            ):
+                oa = old.annotations[key]
+                months = [
+                    "JAN",
+                    "FEB",
+                    "MAR",
+                    "APR",
+                    "MAY",
+                    "JUN",
+                    "JUL",
+                    "AUG",
+                    "SEP",
+                    "OCT",
+                    "NOV",
+                    "DEC",
+                ]
+                oa = f"{oa.day:02d}-{months[oa.month - 1]}-{oa.year}"
+                self.assertEqual(oa, new.annotations[key], msg=msg)
             else:
                 self.assertEqual(
                     repr(old.annotations[key]), repr(new.annotations[key]), msg=msg
@@ -589,6 +604,18 @@ class FeatureWriting(SeqIOFeatureTestBaseClass):
             self.assertEqual(_get_location_string(f._flip(100), 100), "1..100")
             self.assertEqual(_get_location_string(f._flip(200), 200), "101..200")
             self.assertEqual(f._flip(100).location.strand, f.location.strand)
+
+        # Test for compound locations (see https://github.com/biopython/biopython/issues/4611)
+
+        # flip with +1/-1 strands does not invert the order in compound locations
+        loc = SimpleLocation(4, 6, 1) + SimpleLocation(0, 1, 1)
+        self.assertEqual(str(loc._flip(6)), "join{[0:2](-), [5:6](-)}")
+        loc = SimpleLocation(4, 6, -1) + SimpleLocation(0, 1, -1)
+        self.assertEqual(str(loc._flip(6)), "join{[0:2](+), [5:6](+)}")
+
+        # flip with None strand inverts the order in compound locations
+        loc = SimpleLocation(4, 6, None) + SimpleLocation(0, 1, None)
+        self.assertEqual(str(loc._flip(6)), "join{[5:6], [0:2]}")
 
     def test_between(self):
         """GenBank/EMBL write/read simple between locations."""
@@ -1058,6 +1085,56 @@ class FeatureWriting(SeqIOFeatureTestBaseClass):
         self.record.features.append(f)
 
         self.write_read_checks()
+
+    def test_datetime(self):
+        default_locale = locale.setlocale(locale.LC_ALL)
+        for locale_name in [
+            "C",
+            "de_DE.utf8",
+            "fr_FR.utf8",
+            "pt_BR.utf8",
+        ]:
+            try:
+                locale.setlocale(locale.LC_ALL, locale_name)
+                # Why october ? Because it is abbreviated to OKT in DE, OCT. in FR, OUT in BR
+                self.record.annotations["date"] = datetime.datetime.strptime(
+                    "2025-10-01", "%Y-%m-%d"
+                )
+                self.write_read_check("gb")
+            except locale.Error:
+                pass
+        locale.setlocale(locale.LC_ALL, default_locale)
+
+    def test_date(self):
+        for m in [1, 10, 12]:
+            self.record.annotations["date"] = datetime.datetime.strptime(
+                f"2025-{m}-01", "%Y-%m-%d"
+            ).date()
+            self.write_read_check("gb")
+
+    def test_invalid_date_format(self):
+        # Using a date in the wrong format
+        self.record.annotations["date"] = "04-04-1970"
+        stream = StringIO()
+        with warnings.catch_warnings(record=True) as w:
+            SeqIO.write([self.record], stream, "gb")
+            self.assertEqual(len(w), 1, "a warning should be raised")
+            self.assertIn("Invalid date format", str(w[0].message))
+        stream.seek(0)
+        self.assertIn("1980", stream.getvalue())
+        self.assertNotIn(self.record.annotations["date"], stream.getvalue())
+
+    def test_invalid_date_locale(self):
+        # Using a date not in english which is not accepted by the writer
+        self.record.annotations["date"] = "04-OKT-1970"
+        stream = StringIO()
+        with warnings.catch_warnings(record=True) as w:
+            SeqIO.write([self.record], stream, "gb")
+            self.assertEqual(len(w), 1, "a warning should be raised")
+            self.assertIn("Invalid date", str(w[0].message))
+        stream.seek(0)
+        self.assertIn("1980", stream.getvalue())
+        self.assertNotIn(self.record.annotations["date"], stream.getvalue())
 
 
 class NC_000932(SeqIOFeatureTestBaseClass):

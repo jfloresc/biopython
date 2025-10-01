@@ -11,16 +11,17 @@ results are parseable. Detailed tests on each Entrez service are not within the
 scope of this file as they are already covered in test_Entrez.py.
 
 """
-from Bio import Entrez
-from Bio import Medline
-from Bio import SeqIO
-from Bio.SeqRecord import SeqRecord
 
 import doctest
 import sys
 import unittest
 
 import requires_internet
+
+from Bio import Entrez
+from Bio import Medline
+from Bio import SeqIO
+from Bio.SeqRecord import SeqRecord
 
 requires_internet.check()
 
@@ -178,22 +179,6 @@ class EntrezOnlineCase(unittest.TestCase):
         stream.close()
         stream = Entrez.epost("nuccore", id=["160418", "160351"])
         stream.close()
-
-    def test_egquery(self):
-        """Test Entrez.egquery.
-
-        which searches in all Entrez databases for a single text query.
-        """
-        stream = Entrez.egquery(term="biopython")
-        record = Entrez.read(stream)
-        stream.close()
-
-        done = False
-        for row in record["eGQueryResult"]:
-            if "pmc" in row["DbName"]:
-                self.assertGreater(int(row["Count"]), 60)
-                done = True
-        self.assertTrue(done)
 
     def test_espell(self):
         """Test misspellings with Entrez.espell."""

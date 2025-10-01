@@ -27,18 +27,15 @@ Feature Table Documentation:
 # for more details of this format, and an example.
 # Added by Ying Huang & Iddo Friedberg
 
-
-import warnings
 import re
 import sys
+import warnings
 from collections import defaultdict
 
+from Bio import BiopythonParserWarning
 from Bio.File import as_handle
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from Bio import BiopythonParserWarning
-
-from typing import List
 
 
 class InsdcScanner:
@@ -1170,7 +1167,7 @@ class GenBankScanner(InsdcScanner):
     RECORD_START = "LOCUS       "
     HEADER_WIDTH = 12
     FEATURE_START_MARKERS = ["FEATURES             Location/Qualifiers", "FEATURES"]
-    FEATURE_END_MARKERS: List[str] = []
+    FEATURE_END_MARKERS: list[str] = []
     FEATURE_QUALIFIER_INDENT = 21
     FEATURE_QUALIFIER_SPACER = " " * FEATURE_QUALIFIER_INDENT
     SEQUENCE_HEADERS = [
@@ -1309,16 +1306,22 @@ class GenBankScanner(InsdcScanner):
                 )
             # if line[55:62] != '       ':
             #      raise ValueError('LOCUS line does not contain spaces from position 56 to 62:\n' + line)
+            parse_date = False
             if line[62:73].strip():
+                parse_date = True
                 if line[64:65] != "-":
-                    raise ValueError(
-                        "LOCUS line does not contain - at "
-                        "position 65 in date:\n" + line
+                    parse_date = False
+                    warnings.warn(
+                        "LOCUS line does not contain - "
+                        "at position 65 in date:\n" + line,
+                        BiopythonParserWarning,
                     )
                 if line[68:69] != "-":
-                    raise ValueError(
-                        "LOCUS line does not contain - at "
-                        "position 69 in date:\n" + line
+                    parse_date = False
+                    warnings.warn(
+                        "LOCUS line does not contain - "
+                        "at position 69 in date:\n" + line,
+                        BiopythonParserWarning,
                     )
 
             name_and_length_str = line[self.GENBANK_INDENT : 29]
@@ -1356,7 +1359,7 @@ class GenBankScanner(InsdcScanner):
             consumer.molecule_type(line[33:41].strip())
             consumer.topology(line[42:51].strip())
             consumer.data_file_division(line[52:55])
-            if line[62:73].strip():
+            if parse_date:
                 consumer.date(line[62:73])
         elif line[40:44] in [" bp ", " aa ", " rc "] and line[54:64].strip() in [
             "",
@@ -1432,16 +1435,22 @@ class GenBankScanner(InsdcScanner):
                 raise ValueError(
                     "LOCUS line does not contain space at position 68:\n" + line
                 )
+            parse_date = False
             if line[68:79].strip():
+                parse_date = True
                 if line[70:71] != "-":
-                    raise ValueError(
-                        "LOCUS line does not contain - at "
-                        "position 71 in date:\n" + line
+                    parse_date = False
+                    warnings.warn(
+                        "LOCUS line does not contain - "
+                        "at position 71 in date:\n" + line,
+                        BiopythonParserWarning,
                     )
                 if line[74:75] != "-":
-                    raise ValueError(
-                        "LOCUS line does not contain - at "
-                        "position 75 in date:\n" + line
+                    parse_date = False
+                    warnings.warn(
+                        "LOCUS line does not contain - "
+                        "at position 75 in date:\n" + line,
+                        BiopythonParserWarning,
                     )
 
             name_and_length_str = line[self.GENBANK_INDENT : 40]
@@ -1470,7 +1479,7 @@ class GenBankScanner(InsdcScanner):
             consumer.topology(line[55:63].strip())
             if line[64:76].strip():
                 consumer.data_file_division(line[64:67])
-            if line[68:79].strip():
+            if parse_date:
                 consumer.date(line[68:79])
         elif line[self.GENBANK_INDENT :].strip().count(" ") == 0:
             # Truncated LOCUS line, as produced by some EMBOSS tools - see bug 1762
@@ -1635,16 +1644,27 @@ class GenBankScanner(InsdcScanner):
                     # Need to call consumer.dblink() for each line, e.g.
                     # DBLINK      Project: 57779
                     #             BioProject: PRJNA57779
-                    consumer.dblink(data.strip())
+                    line = data.strip()
                     # Read in the next line, and see if its more of the DBLINK section:
                     while True:
-                        line = next(line_iter)
-                        if line[: self.GENBANK_INDENT] == self.GENBANK_SPACER:
-                            # Add this continuation to the data string
-                            consumer.dblink(line[self.GENBANK_INDENT :].strip())
+                        next_line = next(line_iter)
+                        if next_line[: self.GENBANK_INDENT] == self.GENBANK_SPACER:
+                            # No new tag on next line, continue to add dbrefs
+                            if next_line.count(":") == 0:
+                                # This is a continuation of previous dbref
+                                line += " " + next_line.strip()
+                            else:
+                                # Add this continuation to the data string
+                                consumer.dblink(line.strip())
+                                line = next_line
+                            continue
                         else:
+                            # Add this continuation to the data string
+                            consumer.dblink(line.strip())
                             # End of the DBLINK, leave this text in the variable "line"
+                            line = next_line
                             break
+                        line = next(line_iter)
                 elif line_type == "REFERENCE":
                     if self.debug > 1:
                         print("Found reference [" + data + "]")

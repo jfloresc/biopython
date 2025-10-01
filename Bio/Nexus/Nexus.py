@@ -12,22 +12,19 @@ Based upon 'NEXUS: An extensible file format for systematic information'
 Maddison, Swofford, Maddison. 1997. Syst. Biol. 46(4):590-621
 """
 
-from functools import reduce
 import copy
 import math
 import random
 import sys
 import warnings
+from functools import reduce
 
+from Bio import BiopythonWarning
 from Bio import File
 from Bio.Data import IUPACData
-from Bio.Seq import Seq
-from Bio import BiopythonDeprecationWarning, BiopythonWarning
-
-
 from Bio.Nexus.StandardData import StandardData
 from Bio.Nexus.Trees import Tree
-
+from Bio.Seq import Seq
 
 INTERLEAVE = 70
 SPECIAL_COMMANDS = [
@@ -596,9 +593,7 @@ class Commandline:
                         for n in range(len(options))
                         if options[n] == "=" and n != 0 and n != len(options)
                     ]
-                    indices = []
-                    for sl in valued_indices:
-                        indices.extend(sl)
+                    indices = [index for sl in valued_indices for index in sl]
                     token_indices = [n for n in range(len(options)) if n not in indices]
                     for opt in valued_indices:
                         # self.options[options[opt[0]].lower()] = options[opt[2]].lower()
@@ -665,28 +660,6 @@ class Nexus:
             self.read(input)
         else:
             self.read(DEFAULTNEXUS)
-
-    def get_original_taxon_order(self):
-        """Included for backwards compatibility (DEPRECATED)."""
-        warnings.warn(
-            "The get_original_taxon_order method has been deprecated "
-            "and will likely be removed from Biopython in the near "
-            "future. Please use the taxlabels attribute instead.",
-            BiopythonDeprecationWarning,
-        )
-        return self.taxlabels
-
-    def set_original_taxon_order(self, value):
-        """Included for backwards compatibility (DEPRECATED)."""
-        warnings.warn(
-            "The set_original_taxon_order method has been deprecated "
-            "and will likely be removed from Biopython in the near "
-            "future. Please use the taxlabels attribute instead.",
-            BiopythonDeprecationWarning,
-        )
-        self.taxlabels = value
-
-    original_taxon_order = property(get_original_taxon_order, set_original_taxon_order)
 
     def read(self, input):
         """Read and parse NEXUS input (a filename, file-handle, or string)."""

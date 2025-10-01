@@ -5,12 +5,14 @@
 # as part of this package.
 """Tests for Bio.Align.fasta module."""
 import unittest
-
 from io import StringIO
 
-from Bio import Align
-
 import numpy as np
+
+from Bio import Align
+from Bio.Align import substitution_matrices
+
+substitution_matrix = substitution_matrices.load("BLOSUM62")
 
 
 class TestFASTAReadingWriting(unittest.TestCase):
@@ -135,6 +137,61 @@ MENSDSNDKGSDQSAAQRRSQMDRLDREEAFYQFVNNLSEEDYRLMRDNNLLGTPGESTEEELLRRLQQIKEGPPPQSPD
 ---------MSPQTETKASVGFKAGVKEYKLTYYTPEYETKDTDILAAFRVTPQPG-----------------VPPEEAGAAVAAESSTGT---------WTTVWTDGLTSLDRYKG-----RCYHIEPVPG-------------------EKDQCICYVAYPLDLFEEGSVTNMFTSIVGNVFGFKALRALRLEDLRIPVAYVKTFQGPPHGIQVERDKLNKYGRPLLGCTIKPKLGLSAKNYGRAVYECLRGGLDFTKDDENVNSQPFMRWRDRFLFCAEAIYKAQAETGEIKGHYLNATAG-----------------------TCEEMIKRAIFARELGVPIVMHDYLTGGFTANTSLAHYCRDNGLLLHIHRAMHAVIDRQKNHGMHFRVLAKALRLSGGDHIHSGTVVGKLEGERDITLGFVDLLRDDFIEKDRSRGIYFTQDWVSLPGVIPVASG-----------------------------GIHVWHMPALTEIFGDDSVLQFGGGTLGHPWGNAPGAVANRVA-----------VEACVKARNEG---RDLAAEGNAIIREACKWSPELAAACEVWKEIKFEFPAMD---
 """,
         )
+        counts = alignment.counts(substitution_matrix)
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (substitution score = -34.0; 472 aligned letters; 64 identities; 408 mismatches; 126 positives; 129 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    substitution_score = -34.0,
+    aligned = 472:
+        identities = 64,
+        positives = 126,
+        mismatches = 408.
+    gaps = 129:
+        left_gaps = 9:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 9:
+                open_left_deletions = 1,
+                extend_left_deletions = 8;
+        internal_gaps = 117:
+            internal_insertions = 1:
+                open_internal_insertions = 1,
+                extend_internal_insertions = 0;
+            internal_deletions = 116:
+                open_internal_deletions = 8,
+                extend_internal_deletions = 108;
+        right_gaps = 3:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 3:
+                open_right_deletions = 1,
+                extend_right_deletions = 2.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 9)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 3)
+        self.assertEqual(counts.internal_insertions, 1)
+        self.assertEqual(counts.internal_deletions, 116)
+        self.assertEqual(counts.left_gaps, 9)
+        self.assertEqual(counts.right_gaps, 3)
+        self.assertEqual(counts.internal_gaps, 117)
+        self.assertEqual(counts.insertions, 1)
+        self.assertEqual(counts.deletions, 128)
+        self.assertEqual(counts.gaps, 129)
+        self.assertEqual(counts.aligned, 472)
+        self.assertEqual(counts.identities, 64)
+        self.assertEqual(counts.mismatches, 408)
+        self.assertEqual(counts.positives, 126)
 
     def test_msaprobs(self):
         path = "Clustalw/msaprobs.fa"
@@ -303,6 +360,61 @@ MKSVL-------KVS----LAALTLA--FAVSSH---------A----------ADKKLVVATDTAFVPFEFKQ--GDKY
 MKKLVL------SLS----LV---LA--FSSATA---------------A-FAAIPQNIRIGTDPTYAPFESKNS-QGELVGFDIDLAKELCKRINTQCTFVENPLDALIPSLKAKKIDAIMSSLSITEKRQQEIAFTDKLYAADSRLVVAK-NSDIQPTVESLKGKRVGVLQGTTQETFGNEHWAPKGIEIVSYQGQDNIYSDLTAGRIDAAFQDEVAASEGFLKQPVGKDYKFGGPSVKDEKLFGVGTGMGLRK--EDNELREALNKAFAEMRADGTYEKLAKKYFDFDVYG---G
 """,
         )
+        counts = alignment.counts(substitution_matrix)
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (substitution score = 10664.0; 6948 aligned letters; 2353 identities; 4595 mismatches; 3745 positives; 608 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    substitution_score = 10664.0,
+    aligned = 6948:
+        identities = 2353,
+        positives = 3745,
+        mismatches = 4595.
+    gaps = 608:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 578:
+            internal_insertions = 285:
+                open_internal_insertions = 126,
+                extend_internal_insertions = 159;
+            internal_deletions = 293:
+                open_internal_deletions = 125,
+                extend_internal_deletions = 168;
+        right_gaps = 30:
+            right_insertions = 11:
+                open_right_insertions = 8,
+                extend_right_insertions = 3;
+            right_deletions = 19:
+                open_right_deletions = 7,
+                extend_right_deletions = 12.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 11)
+        self.assertEqual(counts.right_deletions, 19)
+        self.assertEqual(counts.internal_insertions, 285)
+        self.assertEqual(counts.internal_deletions, 293)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 30)
+        self.assertEqual(counts.internal_gaps, 578)
+        self.assertEqual(counts.insertions, 296)
+        self.assertEqual(counts.deletions, 312)
+        self.assertEqual(counts.gaps, 608)
+        self.assertEqual(counts.aligned, 6948)
+        self.assertEqual(counts.identities, 2353)
+        self.assertEqual(counts.mismatches, 4595)
+        self.assertEqual(counts.positives, 3745)
         self.check_reading_writing(path)
 
     def test_muscle(self):
@@ -407,6 +519,58 @@ ATGAACAAAGTAGCGAGGAAGAACAAAACATCAGGTGAACAAAAAAAAAACTCAATCCACATCAAAGTTACAATAACTGA
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ATGAACAAAGTAGCGAGGAAGAA------------------------------CAAAACATC----------------------------------------------------------------------------------------------------------------------------------------------------------------------------AGCAAAGAAAACGATCTGTCTCCGTCGTAACACACAGTTTTTCGAGACCCTTTGCTTCTTCGGCGCCGGTGGACACGTCAGCATCTCCGGTATCCTAGACTTCTTGGCTTTCGGGGTACAACAACCGCCTGGTGACGTCAGCACCGCTGCTGGGGATGGAGAGGGAACAGAGTAG
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (1034 aligned letters; 974 identities; 60 mismatches; 962 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 1034:
+        identities = 974,
+        mismatches = 60.
+    gaps = 962:
+        left_gaps = 556:
+            left_insertions = 65:
+                open_left_insertions = 1,
+                extend_left_insertions = 64;
+            left_deletions = 491:
+                open_left_deletions = 2,
+                extend_left_deletions = 489;
+        internal_gaps = 404:
+            internal_insertions = 0:
+                open_internal_insertions = 0,
+                extend_internal_insertions = 0;
+            internal_deletions = 404:
+                open_internal_deletions = 4,
+                extend_internal_deletions = 400;
+        right_gaps = 2:
+            right_insertions = 2:
+                open_right_insertions = 2,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 65)
+        self.assertEqual(counts.left_deletions, 491)
+        self.assertEqual(counts.right_insertions, 2)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 0)
+        self.assertEqual(counts.internal_deletions, 404)
+        self.assertEqual(counts.left_gaps, 556)
+        self.assertEqual(counts.right_gaps, 2)
+        self.assertEqual(counts.internal_gaps, 404)
+        self.assertEqual(counts.insertions, 67)
+        self.assertEqual(counts.deletions, 895)
+        self.assertEqual(counts.gaps, 962)
+        self.assertEqual(counts.aligned, 1034)
+        self.assertEqual(counts.identities, 974)
+        self.assertEqual(counts.mismatches, 60)
         self.check_reading_writing(path)
 
     def test_kalign(self):
@@ -456,6 +620,58 @@ GCTGGGGATGGAGAGGGAACAGAGT-T
 GCTGGGGATGGAGAGGGAACAGAGTAG
 """,
         )
+        counts = alignment.counts()
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (26 aligned letters; 25 identities; 1 mismatches; 1 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    aligned = 26:
+        identities = 25,
+        mismatches = 1.
+    gaps = 1:
+        left_gaps = 0:
+            left_insertions = 0:
+                open_left_insertions = 0,
+                extend_left_insertions = 0;
+            left_deletions = 0:
+                open_left_deletions = 0,
+                extend_left_deletions = 0;
+        internal_gaps = 1:
+            internal_insertions = 1:
+                open_internal_insertions = 1,
+                extend_internal_insertions = 0;
+            internal_deletions = 0:
+                open_internal_deletions = 0,
+                extend_internal_deletions = 0;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 0)
+        self.assertEqual(counts.left_deletions, 0)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 1)
+        self.assertEqual(counts.internal_deletions, 0)
+        self.assertEqual(counts.left_gaps, 0)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 1)
+        self.assertEqual(counts.insertions, 1)
+        self.assertEqual(counts.deletions, 0)
+        self.assertEqual(counts.gaps, 1)
+        self.assertEqual(counts.aligned, 26)
+        self.assertEqual(counts.identities, 25)
+        self.assertEqual(counts.mismatches, 1)
         self.check_reading_writing(path)
 
     def test_probcons(self):
@@ -595,6 +811,61 @@ VQIKMGTDKYAPLYEPKALSISAGDTVEFVMNKVGPHNVIFDK--VPAG-ES-APALSNTKLRIAPGSFYSVTLGT---P
 VHMLNKGKDGAMVFEPASLKVAPGDTVTFIPTDK-GHNVETIKGMIPDG-AE-A-------FKSKINENYKVTFTA---PGVYGVKCTPHYGMGMVGVVEV
 """,
         )
+        counts = alignment.counts(substitution_matrix)
+        self.assertEqual(
+            repr(counts),
+            "<AlignmentCounts object (substitution score = 2197.0; 904 aligned letters; 427 identities; 477 mismatches; 554 positives; 72 gaps) at 0x%x>"
+            % id(counts),
+        )
+        self.assertEqual(
+            str(counts),
+            """\
+AlignmentCounts object with
+    substitution_score = 2197.0,
+    aligned = 904:
+        identities = 427,
+        positives = 554,
+        mismatches = 477.
+    gaps = 72:
+        left_gaps = 10:
+            left_insertions = 8:
+                open_left_insertions = 4,
+                extend_left_insertions = 4;
+            left_deletions = 2:
+                open_left_deletions = 2,
+                extend_left_deletions = 0;
+        internal_gaps = 62:
+            internal_insertions = 14:
+                open_internal_insertions = 9,
+                extend_internal_insertions = 5;
+            internal_deletions = 48:
+                open_internal_deletions = 17,
+                extend_internal_deletions = 31;
+        right_gaps = 0:
+            right_insertions = 0:
+                open_right_insertions = 0,
+                extend_right_insertions = 0;
+            right_deletions = 0:
+                open_right_deletions = 0,
+                extend_right_deletions = 0.
+""",
+        )
+        self.assertEqual(counts.left_insertions, 8)
+        self.assertEqual(counts.left_deletions, 2)
+        self.assertEqual(counts.right_insertions, 0)
+        self.assertEqual(counts.right_deletions, 0)
+        self.assertEqual(counts.internal_insertions, 14)
+        self.assertEqual(counts.internal_deletions, 48)
+        self.assertEqual(counts.left_gaps, 10)
+        self.assertEqual(counts.right_gaps, 0)
+        self.assertEqual(counts.internal_gaps, 62)
+        self.assertEqual(counts.insertions, 22)
+        self.assertEqual(counts.deletions, 50)
+        self.assertEqual(counts.gaps, 72)
+        self.assertEqual(counts.aligned, 904)
+        self.assertEqual(counts.identities, 427)
+        self.assertEqual(counts.mismatches, 477)
+        self.assertEqual(counts.positives, 554)
         self.check_reading_writing(path)
 
     def test_empty(self):

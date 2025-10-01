@@ -12,12 +12,12 @@ searching and some common consensus algorithms such as strict, majority rule and
 adam consensus.
 """
 
-import random
 import itertools
-
+import random
 from ast import literal_eval
-from Bio.Phylo import BaseTree
+
 from Bio.Align import MultipleSeqAlignment
+from Bio.Phylo import BaseTree
 
 
 class _BitString(str):
@@ -257,9 +257,8 @@ def strict_consensus(trees):
             if bs.contains(bitstr):
                 # remove old bitstring
                 del bitstr_clades[bs]
-                # update clade childs
-                new_childs = [child for child in c.clades if child not in clade_terms]
-                c.clades = new_childs
+                # update clade children
+                c.clades = [child for child in c.clades if child not in clade_terms]
                 # set current clade as child of c
                 c.clades.append(clade)
                 # update bitstring
@@ -275,7 +274,7 @@ def strict_consensus(trees):
 def majority_consensus(trees, cutoff=0):
     """Search majority rule consensus tree from multiple trees.
 
-    This is a extend majority rule method, which means the you can set any
+    This is an extend majority rule method, which means the you can set any
     cutoff between 0 ~ 1 instead of 0.5. The default value of cutoff is 0 to
     create a relaxed binary consensus tree in any condition (as long as one of
     the provided trees is a binary tree). The branch length of each consensus
@@ -324,7 +323,7 @@ def majority_consensus(trees, cutoff=0):
         # record its possible parent and child clades.
         compatible = True
         parent_bitstr = None
-        child_bitstrs = []  # multiple independent childs
+        child_bitstrs = []  # multiple independent children
         for bs in bsckeys:
             if not bs.iscompatible(bitstr):
                 compatible = False
@@ -347,7 +346,7 @@ def majority_consensus(trees, cutoff=0):
         if parent_bitstr:
             # insert current clade; remove old bitstring
             parent_clade = bitstr_clades.pop(parent_bitstr)
-            # update parent clade childs
+            # update parent clade children
             parent_clade.clades = [
                 c for c in parent_clade.clades if c not in clade_terms
             ]
@@ -457,15 +456,15 @@ def _sub_clade(clade, term_names):
         for c in sub_clade.find_clades(terminal=False, order="preorder"):
             if c == sub_clade.root:
                 continue
-            childs = set(c.find_clades(terminal=True)) & set(term_clades)
-            if childs:
+            children = set(c.find_clades(terminal=True)) & set(term_clades)
+            if children:
                 for tc in temp_clade.find_clades(terminal=False, order="preorder"):
-                    tc_childs = set(tc.clades)
-                    tc_new_clades = tc_childs - childs
-                    if childs.issubset(tc_childs) and tc_new_clades:
+                    tc_children = set(tc.clades)
+                    tc_new_clades = tc_children - children
+                    if children.issubset(tc_children) and tc_new_clades:
                         tc.clades = list(tc_new_clades)
                         child_clade = BaseTree.Clade()
-                        child_clade.clades.extend(list(childs))
+                        child_clade.clades.extend(list(children))
                         tc.clades.append(child_clade)
         sub_clade = temp_clade
     return sub_clade

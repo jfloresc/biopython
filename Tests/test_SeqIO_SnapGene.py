@@ -5,9 +5,9 @@
 # Please see the LICENSE file that should have been included as part of this
 # package.
 """Tests for the SeqIO SnapGene module."""
+
 import datetime
 import unittest
-
 from io import BytesIO
 
 from Bio import SeqIO
@@ -259,6 +259,17 @@ class TestSnapGene(unittest.TestCase):
                     self.assertTrue("name" not in read_feat.qualifiers)
                 if "segments" in exp_feat:
                     self._check_feature_segments(exp_feat["segments"], read_feat)
+
+    def test_filter_with_hybridization_params(self):
+        """Ensure only releveant `primer_bind` features from SnapGene files are retained in
+        the `SeqRecord`. See the docstring of `_parse_primers_packet` for more details.
+        """
+        record = SeqIO.read("SnapGene/sample-hybridization-params.dna", "snapgene")
+        count_primer_features = 0
+        for feature in record.features:
+            if "XhoI-hht2(US)-Fwd" in feature.qualifiers["label"]:
+                count_primer_features += 1
+        self.assertEqual(count_primer_features, 1)
 
 
 class TestCorruptedSnapGene(unittest.TestCase):

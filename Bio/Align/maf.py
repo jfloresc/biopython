@@ -28,13 +28,12 @@ As we can see on this example, ``start + size`` will give one more than the
 zero-based end position. We can therefore manipulate ``start`` and
 ``start + size`` as python list slice boundaries.
 """
-import shlex
-import itertools
 
+import shlex
 
 from Bio.Align import Alignment
 from Bio.Align import interfaces
-from Bio.Seq import Seq, reverse_complement
+from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 
@@ -277,7 +276,7 @@ class AlignmentIterator(interfaces.AlignmentIterator):
 
     def _read_header(self, stream):
         metadata = {}
-        line = next(stream)
+        line = stream.readline()
         if line.startswith("track "):
             words = shlex.split(line)
             for word in words[1:]:
@@ -301,7 +300,7 @@ class AlignmentIterator(interfaces.AlignmentIterator):
                 else:
                     raise ValueError("Unexpected variable '%s' in track line" % key)
                 metadata[key] = value
-            line = next(stream)
+            line = stream.readline()
         words = line.split()
         if words[0] != "##maf":
             raise ValueError("header line does not start with ##maf")
@@ -337,12 +336,11 @@ class AlignmentIterator(interfaces.AlignmentIterator):
         aline = self._aline
         if aline is None:
             return
-        alignment = self._create_alignment(aline, stream)
-        return alignment
-
-    def _create_alignment(self, aline, stream):
         records = []
+        starts = []
+        sizes = []
         strands = []
+        score = None
         aligned_sequences = []
         annotations = {}
         words = aline[1:].split()
@@ -378,19 +376,12 @@ class AlignmentIterator(interfaces.AlignmentIterator):
                 text = words[6]
                 for gap_char in ".=_":
                     text = text.replace(gap_char, "-")
-                aligned_sequences.append(text)
-                sequence = text.replace("-", "")
-                if len(sequence) != size:
-                    raise ValueError(
-                        "sequence size is incorrect (found %d, expected %d)"
-                        % (len(sequence), size)
-                    )
-                if strand == "-":
-                    sequence = reverse_complement(sequence)
-                    start = srcSize - start - size
-                seq = Seq({start: sequence}, length=srcSize)
+                aligned_sequences.append(text.encode())
+                seq = Seq(None, length=srcSize)
                 record = SeqRecord(seq, id=src, name="", description="")
                 records.append(record)
+                starts.append(start)
+                sizes.append(size)
                 strands.append(strand)
             elif line.startswith("i "):
                 words = line.strip().split()
@@ -443,10 +434,19 @@ class AlignmentIterator(interfaces.AlignmentIterator):
                 raise ValueError(f"Error parsing alignment - unexpected line:\n{line}")
         else:
             self._aline = None
-        coordinates = Alignment.infer_coordinates(aligned_sequences)
+        sequences, coordinates = Alignment.parse_printed_alignment(aligned_sequences)
+        for start, size, sequence, record in zip(starts, sizes, sequences, records):
+            srcSize = len(record.seq)
+            if len(sequence) != size:
+                raise ValueError(
+                    "sequence size is incorrect (found %d, expected %d)"
+                    % (len(sequence), size)
+                )
+            record.seq = Seq({start: sequence}, length=srcSize)
         for record, strand, row in zip(records, strands, coordinates):
             if strand == "-":
                 row[:] = row[-1] - row[0] - row
+                record.seq = record.seq.reverse_complement()
             start = record.seq.defined_ranges[0][0]
             row += start
         alignment = Alignment(records, coordinates)

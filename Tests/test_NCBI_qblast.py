@@ -24,20 +24,19 @@ tests are run in alphabetical order, so you must place your mock file at the
 correct position.
 
 """
-import unittest
-from unittest import mock
 
-from urllib.error import HTTPError
+import unittest
 from io import BytesIO
+from unittest import mock
+from urllib.error import HTTPError
+
+import requires_internet
 
 from Bio import MissingExternalDependencyError
 
 # We want to test these:
 from Bio.Blast import NCBIWWW
 from Bio.Blast import NCBIXML
-
-import requires_internet
-
 
 NCBIWWW.email = "biopython@biopython.org"
 

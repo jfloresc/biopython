@@ -3,16 +3,18 @@
 # license.  Please see the LICENSE file that should have been included
 # as part of this package.
 """Tests for SeqIO PdbIO module."""
+
 import unittest
 import warnings
 
 try:
-    import numpy
+    import numpy as np
     from numpy import dot  # Missing on PyPy's micronumpy
 
     del dot
     # We don't need this (?) but Bio.PDB imports it automatically :(
-    from numpy.linalg import svd, det  # Missing in PyPy 2.0 numpypy
+    from numpy.linalg import det  # Missing in PyPy 2.0 numpypy
+    from numpy.linalg import svd  # Missing in PyPy 2.0 numpypy
 except ImportError:
     from Bio import MissingPythonDependencyError
 
@@ -20,8 +22,8 @@ except ImportError:
         "Install NumPy if you want to use PDB formats with SeqIO."
     ) from None
 
-from Bio import SeqIO
 from Bio import BiopythonParserWarning
+from Bio import SeqIO
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
 
 

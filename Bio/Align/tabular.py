@@ -10,9 +10,12 @@ This module contains a parser for tabular output from BLAST run with the
 '-outfmt 7' argument, as well as tabular output from William Pearson's
 FASTA alignment tools using the '-m 8CB' or '-m 8CC' arguments.
 """
-import re
+
 import enum
+import re
+
 import numpy as np
+
 from Bio.Align import Alignment
 from Bio.Align import interfaces
 from Bio.Seq import Seq
@@ -40,10 +43,9 @@ class AlignmentIterator(interfaces.AlignmentIterator):
     fmt = "Tabular"
 
     def _read_header(self, stream):
-        try:
-            line = next(stream)
-        except StopIteration:
-            raise ValueError("Empty file.") from None
+        line = stream.readline()
+        if not line:
+            raise ValueError("Empty file.")
         if not line.startswith("# "):
             raise ValueError("Missing header.")
         line = line.rstrip()
@@ -69,7 +71,7 @@ class AlignmentIterator(interfaces.AlignmentIterator):
         except ValueError:
             # FASTA
             metadata["Command line"] = line[2:]
-            line = next(stream)
+            line = stream.readline()
             assert line.startswith("# ")
             metadata["Program"], metadata["Version"] = line[2:].rstrip().split(None, 1)
             self._final_prefix = "# FASTA processed "
@@ -370,7 +372,7 @@ class AlignmentIterator(interfaces.AlignmentIterator):
                     target_coordinates.append(target_coordinates[-1] + length)
                     query_coordinates.append(query_coordinates[-1] + length)
                     state = State.MATCH
-        coordinates = np.array([target_coordinates, query_coordinates])
+        coordinates = np.array([target_coordinates, query_coordinates], np.intp)
         return coordinates
 
     def parse_cigar(self, cigar):
@@ -402,5 +404,5 @@ class AlignmentIterator(interfaces.AlignmentIterator):
                 query_coordinate += length
             target_coordinates.append(target_coordinate)
             query_coordinates.append(query_coordinate)
-        coordinates = np.array([target_coordinates, query_coordinates])
+        coordinates = np.array([target_coordinates, query_coordinates], np.intp)
         return coordinates

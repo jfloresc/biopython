@@ -19,10 +19,8 @@ EMBL files, this information is quite important.
 While this chapter should cover most things to do with the ``SeqRecord``
 and ``SeqFeature`` objects in this chapter, you may also want to read
 the ``SeqRecord`` wiki page (http://biopython.org/wiki/SeqRecord), and
-the built in documentation (also online –
-`SeqRecord <http://biopython.org/docs/\bpversion/api/Bio.SeqRecord.html>`__
-and
-`SeqFeature <http://biopython.org/docs/\bpversion/api/Bio.SeqFeature.html>`__):
+the built-in documentation (:py:mod:`Bio.SeqRecord` and
+:py:mod:`Bio.SeqFeature`):
 
 .. code:: pycon
 
@@ -496,7 +494,7 @@ transcript starts at one of two sites. This is very useful information,
 but the complication comes in how to represent this as a position. To
 help us deal with this, we have the concept of fuzzy positions.
 Basically there are several types of fuzzy positions, so we have five
-classes do deal with them:
+classes to deal with them:
 
 ExactPosition
    As its name suggests, this class represents a position which is

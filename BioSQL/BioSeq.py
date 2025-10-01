@@ -18,11 +18,13 @@ Note: Currently we do not support recording per-letter-annotations
 (like quality scores) in BioSQL.
 """
 
-from typing import List, Optional
+from typing import Optional
 
-from Bio.Seq import Seq, SequenceDataAbstractBaseClass
-from Bio.SeqRecord import SeqRecord, _RestrictedDict
 from Bio import SeqFeature
+from Bio.Seq import Seq
+from Bio.Seq import SequenceDataAbstractBaseClass
+from Bio.SeqRecord import _RestrictedDict
+from Bio.SeqRecord import SeqRecord
 
 
 class _BioSQLSequenceData(SequenceDataAbstractBaseClass):
@@ -229,6 +231,7 @@ def _retrieve_features(adaptor, primary_id):
                 )
             if start is not None and end is not None and end < start:
                 import warnings
+
                 from Bio import BiopythonWarning
 
                 warnings.warn(
@@ -536,17 +539,17 @@ class DBSeqRecord(SeqRecord):
     def __del_seq(self):
         del self._seq
 
-    seq = property(__get_seq, __set_seq, __del_seq, "Seq object")
+    seq = property(__get_seq, __set_seq, __del_seq, "Seq object")  # type: ignore
 
     @property
-    def dbxrefs(self) -> List[str]:
+    def dbxrefs(self) -> list[str]:
         """Database cross references."""
         if not hasattr(self, "_dbxrefs"):
             self._dbxrefs = _retrieve_dbxrefs(self._adaptor, self._primary_id)
         return self._dbxrefs
 
     @dbxrefs.setter
-    def dbxrefs(self, value: List[str]) -> None:
+    def dbxrefs(self, value: list[str]) -> None:
         self._dbxrefs = value
 
     @dbxrefs.deleter

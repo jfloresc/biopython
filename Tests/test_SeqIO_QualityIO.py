@@ -3,12 +3,15 @@
 # license.  Please see the LICENSE file that should have been included
 # as part of this package.
 """Additional unit tests for Bio.SeqIO.QualityIO (covering FASTQ and QUAL)."""
+
 import os
 import unittest
 import warnings
-
 from io import BytesIO
 from io import StringIO
+
+from test_SeqIO import SeqIOConverterTestBaseClass
+from test_SeqIO import SeqIOTestBaseClass
 
 from Bio import BiopythonParserWarning
 from Bio import BiopythonWarning
@@ -20,8 +23,6 @@ from Bio.Seq import Seq
 from Bio.Seq import UndefinedSequenceError
 from Bio.SeqIO import QualityIO
 from Bio.SeqRecord import SeqRecord
-from test_SeqIO import SeqIOConverterTestBaseClass
-from test_SeqIO import SeqIOTestBaseClass
 
 
 class QualityIOTestBaseClass(SeqIOTestBaseClass):
@@ -991,16 +992,16 @@ class TestSFF(unittest.TestCase):
 
 
 class NonFastqTests(unittest.TestCase):
-    def check_wrong_format(self, filename):
-        for f in ("fastq", "fastq-sanger", "fastq-solexa", "fastq-illumina"):
-            generator = SeqIO.parse(filename, f)
-            self.assertRaises(ValueError, next, generator)
 
     def test_fasta_as_fastq(self):
-        self.check_wrong_format("Fasta/elderberry.nu")
+        for f in ("fastq", "fastq-sanger", "fastq-solexa", "fastq-illumina"):
+            generator = SeqIO.parse("Fasta/elderberry.nu", f)
+            self.assertRaises(ValueError, next, generator)
 
     def test_sff_as_fastq(self):
-        self.check_wrong_format("Roche/greek.sff")
+        for f in ("fastq", "fastq-sanger", "fastq-solexa", "fastq-illumina"):
+            generator = SeqIO.parse("Roche/greek.sff", f)
+            self.assertRaises(ValueError, next, generator)
 
 
 class TestsConverter(SeqIOConverterTestBaseClass, QualityIOTestBaseClass):

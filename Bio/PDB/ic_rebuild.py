@@ -7,29 +7,30 @@
 """Convert XYZ Structure to internal coordinates and back, test result."""
 
 import re
-
+from io import StringIO
 from itertools import zip_longest
+from typing import Any
+from typing import Union
 
 import numpy as np
 
-from Bio.PDB.PDBExceptions import PDBException
-from io import StringIO
 from Bio.File import as_handle
-from Bio.PDB.PDBIO import PDBIO
-
-from Bio.PDB.Structure import Structure
-from Bio.PDB.internal_coords import IC_Residue
-from Bio.PDB.PICIO import write_PIC, read_PIC, enumerate_atoms, pdb_date
-
-# for typing
-from typing import Dict, Union, Any, Tuple
 from Bio.PDB.Atom import Atom
-from Bio.PDB.Residue import Residue, DisorderedResidue
-from Bio.PDB.Model import Model
 from Bio.PDB.Chain import Chain
+from Bio.PDB.internal_coords import IC_Residue
+from Bio.PDB.Model import Model
+from Bio.PDB.PDBExceptions import PDBException
+from Bio.PDB.PDBIO import PDBIO
+from Bio.PDB.PICIO import enumerate_atoms
+from Bio.PDB.PICIO import pdb_date
+from Bio.PDB.PICIO import read_PIC
+from Bio.PDB.PICIO import write_PIC
+from Bio.PDB.Residue import DisorderedResidue
+from Bio.PDB.Residue import Residue
+from Bio.PDB.Structure import Structure
 
 
-def structure_rebuild_test(entity, verbose: bool = False, quick: bool = False) -> Dict:
+def structure_rebuild_test(entity, verbose: bool = False, quick: bool = False) -> dict:
     """Test rebuild PDB structure from internal coordinates.
 
     Generates internal coordinates for entity and writes to a .pic file in
@@ -69,10 +70,10 @@ def structure_rebuild_test(entity, verbose: bool = False, quick: bool = False) -
 
 
 def report_IC(
-    entity: Union[Structure, Model, Chain, Residue],
-    reportDict: Dict[str, Any] = None,
+    entity: Structure | Model | Chain | Residue,
+    reportDict: dict[str, Any] = None,
     verbose: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Generate dict with counts of ic data elements for each entity level.
 
     reportDict entries are:
@@ -134,8 +135,8 @@ def report_IC(
                 hdr = entity.header.get("head", None)
                 if hdr:
                     reportDict["hdr"] += 1
-                nam = entity.header.get("name", None)
-                if nam:
+                name = entity.header.get("name", None)
+                if name:
                     reportDict["hdr"] += 1
             for mdl in entity:
                 reportDict = report_IC(mdl, reportDict)
@@ -195,7 +196,7 @@ def IC_duplicate(entity) -> Structure:
     return read_PIC(sp)
 
 
-def _atmfid_d2h(atm: Atom) -> Tuple:
+def _atmfid_d2h(atm: Atom) -> tuple:
     afid = list(atm.get_full_id())
     afid4 = list(afid[4])
     afid40 = re.sub("D", "H", afid4[0], count=1)
@@ -209,7 +210,7 @@ def _cmp_atm(
     a0: Atom,
     a1: Atom,
     verbose: bool,
-    cmpdict: Dict,
+    cmpdict: dict,
     rtol: float = None,
     atol: float = None,
 ) -> None:
@@ -269,7 +270,7 @@ def _cmp_res(
     r0: Residue,
     r1: Residue,
     verbose: bool,
-    cmpdict: Dict,
+    cmpdict: dict,
     rtol: float = None,
     atol: float = None,
 ) -> None:
@@ -339,13 +340,13 @@ def _cmp_res(
 
 
 def compare_residues(
-    e0: Union[Structure, Model, Chain],
-    e1: Union[Structure, Model, Chain],
+    e0: Structure | Model | Chain,
+    e1: Structure | Model | Chain,
     verbose: bool = False,
     quick: bool = False,
     rtol: float = None,
     atol: float = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Compare full IDs and atom coordinates for 2 Biopython PDB entities.
 
     Skip DNA and HETATMs.
@@ -365,7 +366,7 @@ def compare_residues(
         Full ID match atoms, and Coordinate match atoms; report string;
         error status (bool)
     """
-    cmpdict: Dict[str, Any] = {}
+    cmpdict: dict[str, Any] = {}
     cmpdict["chains"] = []  # list of chain IDs (union over both structures)
     cmpdict["residues"] = 0  # count of not HETATM residues in longest chain
     cmpdict["rCount"] = 0  # Biopython Residues (includes HETATMs, waters)
@@ -492,9 +493,9 @@ def write_PDB(
                             hdr.upper(), (dd or ""), (pdbid or "")
                         )
                     )
-                nam = entity.header.get("name", None)
-                if nam:
-                    fp.write("TITLE     " + nam.upper() + "\n")
+                name = entity.header.get("name", None)
+                if name:
+                    fp.write("TITLE     " + name.upper() + "\n")
             io = PDBIO()
             io.set_structure(entity)
             io.save(fp, preserve_atom_numbering=True)

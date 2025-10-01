@@ -85,7 +85,7 @@ write in JSON format.
 
 try:
     # Both phen_micro.py and pm_fitting require NumPy, so require NumPy here
-    import numpy
+    import numpy as np
 except ImportError:
     from Bio import MissingPythonDependencyError
 
@@ -96,7 +96,6 @@ except ImportError:
 
 from Bio.File import as_handle
 from Bio.phenotype import phen_micro
-
 
 # Convention for format names is "mainname-format" in lower case.
 

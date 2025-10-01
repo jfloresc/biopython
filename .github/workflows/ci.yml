@@ -24,10 +24,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     # Check for changes only on files changed by the PR/push
-    - uses: tj-actions/changed-files@v42
+    - uses: tj-actions/changed-files@v47
       id: changed-files
 
     # Cache CI packages
@@ -38,9 +38,9 @@ jobs:
         key: ${{ runner.os }}-precommit-hooks-v2-${{ hashFiles('**/.pre-commit-config.yaml') }}
 
     - name: Setup Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
-        python-version: 3.9
+        python-version: "3.10"
 
     - name: Installing pre-commit
       run: |
@@ -63,13 +63,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.8", "3.10", "3.11"]
+        python-version: ["3.10", "3.13"]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Setup Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -96,12 +96,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
-        python-version: 3.9
+        python-version: "3.10"
 
     - name: Install Python packaging tools
       run: |
@@ -115,15 +115,15 @@ jobs:
     needs: [style]
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-2019]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        os: [ubuntu-latest, macos-latest, windows-2022]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -161,12 +161,12 @@ jobs:
 
   # Linux is where the thorough tests run. Install all dependencies and run all (offline) tests.
   test_linux:
-    timeout-minutes: 15
+    timeout-minutes: 20
     needs: [style, build, build_wheels, linux_prep]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.8", "3.10", "3.11"]
+        python-version: ["3.10", "3.13"]
 
     steps:
 
@@ -174,10 +174,10 @@ jobs:
     - run: |
         sudo /etc/init.d/mysql start
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -199,15 +199,23 @@ jobs:
 
     - name: Install from source
       run: |
-        python -m pip install .
+        CC="gcc -fsanitize=address -fsanitize=undefined -g" python -m pip install .
 
-    - name: Run test suite and get coverage
+    - name: Run test suite
       run: |
         cd Tests
-        rm -rf coverage.xml
-        coverage run run_tests.py --offline
+        PYTHONMALLOC=debug LD_PRELOAD="$(realpath "$(gcc -print-file-name=libasan.so)") $(realpath "$(gcc -print-file-name=libstdc++.so)")" ASAN_OPTIONS="detect_leaks=0" coverage run --source Bio,BioSQL run_tests.py --offline
         coverage xml
       shell: bash
+
+    - name: Upload coverage to codecov
+      uses: codecov/codecov-action@v5
+      with:
+        name: Linux GitHub Actions ${{ matrix.python-version }}
+        disable_search: true
+        files: Tests/coverage.xml
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   test_macos:
     timeout-minutes: 15
@@ -215,18 +223,18 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        python-version: ["3.8", "3.12"]
+        python-version: ["3.10", "3.13"]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
 
     - name: Install Python packaging tools
       run: |
-        python -m pip install --upgrade pip setuptools wheel
+        python -m pip install --upgrade pip setuptools wheel coverage
 
     - name: Install minimal Python dependencies
       run: |
@@ -243,28 +251,36 @@ jobs:
     - name: Run test suite
       run: |
         cd Tests
-        python run_tests.py --offline
+        coverage run --source Bio,BioSQL run_tests.py --offline
+        coverage xml
+
+    - name: Upload coverage to codecov
+      uses: codecov/codecov-action@v5
+      with:
+        name: macOS GitHub Actions ${{ matrix.python-version }}
+        disable_search: true
+        files: Tests/coverage.xml
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   test_windows:
     timeout-minutes: 15
     needs: [style, build, build_wheels]
-    runs-on: windows-2019
+    runs-on: windows-2022
     strategy:
       matrix:
-        # TODO - Try Python 3.11 again, was Python 3.11.0 was
-        # failing when trying to delete SQlite databases.
-        python-version: ["3.8", "3.10", "3.12"]
+        python-version: ["3.10", "3.13"]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
 
     - name: Install Python packaging tools
       run: |
-        python -m pip install --upgrade pip setuptools wheel
+        python -m pip install --upgrade pip setuptools wheel coverage
 
     - name: Install minimal Python dependencies
       run: |
@@ -281,7 +297,17 @@ jobs:
     - name: Run test suite
       run: |
         cd Tests
-        python run_tests.py --offline
+        coverage run --source Bio,BioSQL run_tests.py --offline
+        coverage xml
+
+    - name: Upload coverage to codecov
+      uses: codecov/codecov-action@v5
+      with:
+        name: Windows GitHub Actions ${{ matrix.python-version }}
+        disable_search: true
+        files: Tests/coverage.xml
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   test_pypy:
     timeout-minutes: 20  # a little more time
@@ -289,12 +315,12 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [pypy-3.9]
+        python-version: [pypy-3.10]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -332,12 +358,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
-        python-version: 3.9
+        python-version: "3.10"
 
     - uses: actions/cache@v4
       id: cache-pip
@@ -372,6 +398,6 @@ jobs:
     needs: [build_wheels]
     runs-on: ubuntu-latest
     steps:
-      - uses: geekyeggo/delete-artifact@v4
+      - uses: geekyeggo/delete-artifact@v5
         with:
           name: biopython_wheels

@@ -7,14 +7,16 @@
 import unittest
 import warnings
 
-from Bio import BiopythonDeprecationWarning
-from Bio.Seq import UndefinedSequenceError
-from Bio.SeqUtils.CheckSum import seguid
-from Bio.SeqFeature import ExactPosition, UnknownPosition
-from Bio.SeqFeature import SimpleLocation, CompoundLocation, SeqFeature
-from Bio.SeqRecord import SeqRecord
-
 from test_SeqIO import SeqIOTestBaseClass
+
+from Bio.Seq import UndefinedSequenceError
+from Bio.SeqFeature import CompoundLocation
+from Bio.SeqFeature import ExactPosition
+from Bio.SeqFeature import SeqFeature
+from Bio.SeqFeature import SimpleLocation
+from Bio.SeqFeature import UnknownPosition
+from Bio.SeqRecord import SeqRecord
+from Bio.SeqUtils.CheckSum import seguid
 
 
 class SeqRecordTestBaseClass(unittest.TestCase):
@@ -65,11 +67,6 @@ class SeqRecordTestBaseClass(unittest.TestCase):
         self.assertEqual(old_f.location.strand, new_f.location.strand)
         self.assertEqual(old_f.location.ref, new_f.location.ref)
         self.assertEqual(old_f.location.ref_db, new_f.location.ref_db)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=BiopythonDeprecationWarning)
-            self.assertEqual(old_f.location.strand, new_f.strand)
-            self.assertEqual(old_f.location.ref, new_f.ref)
-            self.assertEqual(old_f.location.ref_db, new_f.ref_db)
 
         # TODO - BioSQL does not store/retrieve feature's id (Bug 2526)
         if new_f.id != "<unknown id>":

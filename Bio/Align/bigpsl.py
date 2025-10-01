@@ -20,15 +20,18 @@ You are expected to use this module via the Bio.Align functions.
 
 import numpy as np
 
-
-from Bio.Align import Alignment, Alignments
-from Bio.Align import bigbed, psl
-from Bio.Align.bigbed import AutoSQLTable, Field
-from Bio.Seq import Seq, reverse_complement, UndefinedSequenceError
-from Bio.SeqRecord import SeqRecord
-from Bio.SeqFeature import SeqFeature, Location
+from Bio.Align import Alignment
+from Bio.Align import Alignments
+from Bio.Align import bigbed
+from Bio.Align.bigbed import AutoSQLTable
+from Bio.Align.bigbed import Field
+from Bio.Seq import reverse_complement
+from Bio.Seq import Seq
+from Bio.Seq import UndefinedSequenceError
+from Bio.SeqFeature import Location
+from Bio.SeqFeature import SeqFeature
 from Bio.SeqIO.InsdcIO import _insdc_location_string
-
+from Bio.SeqRecord import SeqRecord
 
 declaration = AutoSQLTable(
     "bigPsl",
@@ -472,9 +475,9 @@ class AlignmentIterator(bigbed.AlignmentIterator):
                     "Expected field name '%s'; found '%s'" % (name, fields[i].name)
                 )
 
-    def _create_alignment(self, chunk):
-        chromId, tStart, tEnd, rest = chunk
-        words = rest.decode().split("\t")
+    def _create_alignment(self, chromId, tStart, tEnd, rest, dataStart, dataEnd):
+        assert rest[dataEnd - 1] == 0
+        words = rest[dataStart : dataEnd - 1].decode().split("\t")
         if len(words) != 22:
             raise ValueError(
                 "Unexpected number of fields (%d, expected 22)" % len(words)
@@ -561,7 +564,7 @@ class AlignmentIterator(bigbed.AlignmentIterator):
             tPosition += tB
             qPosition += qB
             coordinates.append([tPosition, qPosition])
-        coordinates = np.array(coordinates).transpose()
+        coordinates = np.array(coordinates, np.intp).transpose()
         qStart = int(words[9])
         qEnd = int(words[10])
         if strand == "-":

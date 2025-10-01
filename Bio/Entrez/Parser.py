@@ -37,19 +37,18 @@ written solution, since the number of DTDs is rather large and their
 contents may change over time. About half the code in this parser deals
 with parsing the DTD, and the other half with the XML itself.
 """
+
 import os
 import warnings
-from collections import Counter
-from xml.parsers import expat
-from io import BytesIO
 import xml.etree.ElementTree as ET
+from collections import Counter
+from io import BytesIO
+from urllib.parse import urlparse
+from urllib.request import urlopen
+from xml.parsers import expat
 from xml.sax.saxutils import escape
 
-from urllib.request import urlopen
-from urllib.parse import urlparse
-
 from Bio import StreamModeError
-
 
 # The following four classes are used to add a member .attributes to integers,
 # strings, lists, and dictionaries, respectively.
@@ -316,10 +315,13 @@ class DataHandlerMeta(type):
 
     def __init__(cls, *args, **kwargs):
         """Initialize the class."""
+        from Bio import Entrez
+
         try:
-            cls.directory = None  # use default directory for local cache
+            cls.directory = Entrez.local_cache  # use default directory for local cache
         except PermissionError:
-            cls._directory = None  # no local cache
+            cls._directory = Entrez.local_cache  # no local cache
+        del Entrez
 
     @property
     def directory(cls):

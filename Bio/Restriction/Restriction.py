@@ -82,20 +82,18 @@ Notes about the diverses class of the restriction enzyme implementation::
 
 """
 
-
-import warnings
-
+import itertools
 import re
 import string
-import itertools
+import warnings
 
-from Bio.Seq import Seq, MutableSeq
-from Bio.Restriction.Restriction_Dictionary import rest_dict as enzymedict
-from Bio.Restriction.Restriction_Dictionary import typedict
-from Bio.Restriction.Restriction_Dictionary import suppliers as suppliers_dict
-from Bio.Restriction.PrintFormat import PrintFormat
 from Bio import BiopythonWarning
-
+from Bio.Restriction.PrintFormat import PrintFormat
+from Bio.Restriction.Restriction_Dictionary import rest_dict as enzymedict
+from Bio.Restriction.Restriction_Dictionary import suppliers as suppliers_dict
+from Bio.Restriction.Restriction_Dictionary import typedict
+from Bio.Seq import MutableSeq
+from Bio.Seq import Seq
 
 matching = {
     "A": "ARWMHVDN",
@@ -121,7 +119,9 @@ DNA = Seq
 def _make_FormattedSeq_table() -> bytes:
     table = bytearray(256)
     upper_to_lower = ord("A") - ord("a")
-    for c in b"ABCDGHKMNRSTVWY":  # Only allow IUPAC letters
+    # Only allow alphabetic characters
+    # (although only ACGT are used for finding restriction sites)
+    for c in b"ABCDEFGHIJKLMNOPQRSTUVWXYZ":
         table[c] = c  # map uppercase to uppercase
         table[c - upper_to_lower] = c  # map lowercase to uppercase
     return bytes(table)
@@ -539,6 +539,35 @@ class AbstractCut(RestrictionType):
             return cls._search()
 
     @classmethod
+    def _drop(cls):
+        """Remove cuts that are outsite of the sequence (PRIVATE).
+
+        For internal use only.
+
+        Drop the site that are situated outside the sequence in linear
+        sequence. Modify the index for site in circular sequences.
+        """
+        length = len(cls.dna)
+        if cls.dna.is_linear():
+
+            def filtering_function(cut_on_watson):
+                cut_on_crick = cut_on_watson - cls.ovhg
+                return (1 < cut_on_watson <= length) and (1 < cut_on_crick <= length)
+
+            cls.results = [cut for cut in cls.results if filtering_function(cut)]
+        else:
+            for index, location in enumerate(cls.results):
+                if location < 1:
+                    cls.results[index] += length
+                else:
+                    break
+            for index, location in enumerate(cls.results[::-1]):
+                if location > length:
+                    cls.results[-(index + 1)] -= length
+                else:
+                    break
+
+    @classmethod
     def all_suppliers(cls):
         """Print all the suppliers of restriction enzyme."""
         supply = sorted(x[0] for x in suppliers_dict.values())
@@ -950,7 +979,7 @@ class Palindromic(AbstractCut):
 
     @classmethod
     def is_palindromic(cls):
-        """Return if the enzyme has a palindromic recoginition site."""
+        """Return if the enzyme has a palindromic recognition site."""
         return True
 
 
@@ -992,7 +1021,7 @@ class NonPalindromic(AbstractCut):
 
     @classmethod
     def is_palindromic(cls):
-        """Return if the enzyme has a palindromic recoginition site."""
+        """Return if the enzyme has a palindromic recognition site."""
         return False
 
 
@@ -1502,41 +1531,6 @@ class Defined(AbstractCut):
     """
 
     @classmethod
-    def _drop(cls):
-        """Remove cuts that are outsite of the sequence (PRIVATE).
-
-        For internal use only.
-
-        Drop the site that are situated outside the sequence in linear
-        sequence. Modify the index for site in circular sequences.
-        """
-        #
-        #   remove or modify the results that are outside the sequence.
-        #   This is necessary since after finding the site we add the distance
-        #   from the site to the cut with the _modify and _rev_modify methods.
-        #   For linear we will remove these sites altogether.
-        #   For circular sequence, we modify the result rather than _drop it
-        #   since the site is in the sequence.
-        #
-        length = len(cls.dna)
-        drop = itertools.dropwhile
-        take = itertools.takewhile
-        if cls.dna.is_linear():
-            cls.results = list(drop(lambda x: x <= 1, cls.results))
-            cls.results = list(take(lambda x: x <= length, cls.results))
-        else:
-            for index, location in enumerate(cls.results):
-                if location < 1:
-                    cls.results[index] += length
-                else:
-                    break
-            for index, location in enumerate(cls.results[::-1]):
-                if location > length:
-                    cls.results[-(index + 1)] -= length
-                else:
-                    break
-
-    @classmethod
     def is_defined(cls):
         """Return if recognition sequence and cut are defined.
 
@@ -1656,33 +1650,6 @@ class Ambiguous(AbstractCut):
     Internal use only. Not meant to be instantiated.
 
     """
-
-    @classmethod
-    def _drop(cls):
-        """Remove cuts that are outsite of the sequence (PRIVATE).
-
-        For internal use only.
-
-        Drop the site that are situated outside the sequence in linear
-        sequence. Modify the index for site in circular sequences.
-        """
-        length = len(cls.dna)
-        drop = itertools.dropwhile
-        take = itertools.takewhile
-        if cls.dna.is_linear():
-            cls.results = list(drop(lambda x: x <= 1, cls.results))
-            cls.results = list(take(lambda x: x <= length, cls.results))
-        else:
-            for index, location in enumerate(cls.results):
-                if location < 1:
-                    cls.results[index] += length
-                else:
-                    break
-            for index, location in enumerate(cls.results[::-1]):
-                if location > length:
-                    cls.results[-(index + 1)] -= length
-                else:
-                    break
 
     @classmethod
     def is_defined(cls):
@@ -1848,17 +1815,7 @@ class NotDefined(AbstractCut):
         if cls.dna.is_linear():
             return
         else:
-            length = len(cls.dna)
-            for index, location in enumerate(cls.results):
-                if location < 1:
-                    cls.results[index] += length
-                else:
-                    break
-            for index, location in enumerate(cls.results[:-1]):
-                if location > length:
-                    cls.results[-(index + 1)] -= length
-                else:
-                    break
+            super()._drop()
 
     @classmethod
     def is_defined(cls):

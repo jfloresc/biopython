@@ -19,14 +19,15 @@ See also the Seq_ wiki and the chapter in our tutorial:
 .. _`PDF Tutorial`: http://biopython.org/DIST/docs/tutorial/Tutorial.pdf
 
 """
-import array
+
 import collections
 import numbers
 import warnings
-
 from abc import ABC
 from abc import abstractmethod
-from typing import overload, Optional, Union, Dict
+from typing import Optional
+from typing import overload
+from typing import Union
 
 from Bio import BiopythonWarning
 from Bio.Data import CodonTable
@@ -495,12 +496,10 @@ class _SeqAbstractBaseClass(ABC):
         return self._data.decode("ASCII").__iter__()
 
     @overload
-    def __getitem__(self, index: int) -> str:
-        ...
+    def __getitem__(self, index: int) -> str: ...
 
     @overload
-    def __getitem__(self, index: slice) -> "Seq":
-        ...
+    def __getitem__(self, index: slice) -> "Seq": ...
 
     def __getitem__(self, index):
         """Return a subsequence as a single letter or as a sequence object.
@@ -2039,20 +2038,20 @@ class Seq(_SeqAbstractBaseClass):
     not applicable to protein sequences).
     """
 
-    _data: Union[bytes, SequenceDataAbstractBaseClass]
+    _data: bytes | SequenceDataAbstractBaseClass
 
     def __init__(
         self,
-        data: Union[
-            str,
-            bytes,
-            bytearray,
-            _SeqAbstractBaseClass,
-            SequenceDataAbstractBaseClass,
-            dict,
-            None,
-        ],
-        length: Optional[int] = None,
+        data: (
+            str
+            | bytes
+            | bytearray
+            | _SeqAbstractBaseClass
+            | SequenceDataAbstractBaseClass
+            | dict
+            | None
+        ),
+        length: int | None = None,
     ):
         """Create a Seq object.
 
@@ -2132,7 +2131,7 @@ class Seq(_SeqAbstractBaseClass):
                 current = 0  # not needed here, but it keeps mypy happy
                 end = -1
                 starts = sorted(data.keys())
-                _data: Dict[int, bytes] = {}
+                _data: dict[int, bytes] = {}
                 for start in starts:
                     seq = data[start]
                     if isinstance(seq, str):
@@ -2484,9 +2483,7 @@ class _PartiallyDefinedSequenceData(SequenceDataAbstractBaseClass):
         self._data = data
         super().__init__()
 
-    def __getitem__(
-        self, key: Union[slice, int]
-    ) -> Union[bytes, SequenceDataAbstractBaseClass]:
+    def __getitem__(self, key: slice | int) -> bytes | SequenceDataAbstractBaseClass:
         if isinstance(key, slice):
             start, end, step = key.indices(self._length)
             size = len(range(start, end, step))
@@ -2495,7 +2492,7 @@ class _PartiallyDefinedSequenceData(SequenceDataAbstractBaseClass):
             data = {}
             for s, d in self._data.items():
                 indices = range(-s, -s + self._length)[key]
-                e: Optional[int] = indices.stop
+                e: int | None = indices.stop
                 assert e is not None
                 if step > 0:
                     if e <= 0:
@@ -3277,14 +3274,8 @@ def complement_rna(sequence, inplace=False):
     return sequence.decode("ASCII")
 
 
-def _test():
-    """Run the Bio.Seq module's doctests (PRIVATE)."""
-    print("Running doctests...")
-    import doctest
-
-    doctest.testmod(optionflags=doctest.IGNORE_EXCEPTION_DETAIL)
-    print("Done")
-
-
 if __name__ == "__main__":
-    _test()
+    from doctest import IGNORE_EXCEPTION_DETAIL
+    from Bio._utils import run_doctest
+
+    run_doctest(optionflags=IGNORE_EXCEPTION_DETAIL)

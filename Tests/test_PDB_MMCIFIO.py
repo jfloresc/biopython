@@ -18,8 +18,12 @@ import tempfile
 import unittest
 import warnings
 
-from Bio.PDB import MMCIFParser, MMCIFIO, PDBParser, Select
-from Bio.PDB import Atom, Residue
+from Bio.PDB import Atom
+from Bio.PDB import MMCIFIO
+from Bio.PDB import MMCIFParser
+from Bio.PDB import PDBParser
+from Bio.PDB import Residue
+from Bio.PDB import Select
 from Bio.PDB.MMCIF2Dict import MMCIF2Dict
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
 
@@ -212,6 +216,20 @@ class WriteTest(unittest.TestCase):
                 )
             finally:
                 os.remove(filename)
+
+    def test_mmcifio_no_data_val(self):
+        idless = self.pdb_parser.get_structure("", "PDB/1A8O.pdb")
+        self.io.set_structure(idless)
+        filenumber, filename = tempfile.mkstemp()
+        os.close(filenumber)
+        try:
+            self.io.save(filename)
+            struct2 = self.mmcif_parser.get_structure("1a8o", filename)
+            nresidues = len(list(struct2.get_residues()))
+            self.assertEqual(len(struct2), 1)
+            self.assertEqual(nresidues, 158)
+        finally:
+            os.remove(filename)
 
 
 if __name__ == "__main__":

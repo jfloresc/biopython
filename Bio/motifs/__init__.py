@@ -15,9 +15,10 @@ It also includes functionality for parsing output from the AlignACE, MEME,
 and MAST programs, as well as files in the TRANSFAC format.
 """
 
-from urllib.parse import urlencode
-from urllib.request import urlopen, Request
 import warnings
+from urllib.parse import urlencode
+from urllib.request import Request
+from urllib.request import urlopen
 
 try:
     import numpy as np
@@ -28,9 +29,7 @@ except ImportError:
         "Install NumPy if you want to use Bio.motifs."
     ) from None
 
-from Bio import BiopythonDeprecationWarning
 from Bio.Align import Alignment
-from Bio.Seq import reverse_complement
 
 
 def create(instances, alphabet="ACGT"):
@@ -50,8 +49,8 @@ def parse(handle, fmt, strict=True):
      - MINIMAL:          MINIMAL MEME output file motif
      - MAST:             MAST output file motif
      - TRANSFAC:         TRANSFAC database file format
-     - pfm-four-columns: Generic position-frequency matrix format with four columns. (cisbp, homer, hocomoco, neph, tiffin)
-     - pfm-four-rows:    Generic position-frequency matrix format with four row. (scertf, yetfasco, hdpi, idmmpmm, flyfactor survey)
+     - pfm-four-columns: Generic position-frequency matrix format with four columns. (CIS-BP, HOMER, HOCOMOCO, Neph, Tiffin)
+     - pfm-four-rows:    Generic position-frequency matrix format with four row. (ScerTF, YeTFaSCo, hDPI, iDMMPMM, FlyFactorSurvey, Cys2His2 Zinc Finger Proteins PWM Predictor)
      - pfm:              JASPAR-style position-frequency matrix
      - jaspar:           JASPAR-style multiple PFM format
      - sites:            JASPAR-style sites file
@@ -186,143 +185,14 @@ def read(handle, fmt, strict=True):
     return motif
 
 
-class Instances(list):
-    """Class containing a list of sequences that made the motifs."""
-
-    def __init__(self, instances=None, alphabet="ACGT"):
-        """Initialize the class."""
-        from Bio.Seq import Seq, MutableSeq
-
-        warnings.warn(
-            "The Instances class has been deprecated; please use the\n"
-            "Alignment class in Bio.Align instead.\n"
-            "To create a Motif instance, instead of"
-            "\n"
-            ">>> from Bio.motifs import Instances\n"
-            ">>> instances = Instances([Seq('ACGT'), Seq('ACCT'), Seq('AAGT')])\n"
-            ">>> motif = Motif(alphabet='ACGT', instances=instances)\n"
-            "\n"
-            "please use\n"
-            "\n"
-            ">>> from Bio.Align import Alignment\n"
-            ">>> alignment = Alignment([Seq('ACGT'), Seq('ACCT'), Seq('AAGT')])\n"
-            ">>> motif = Motif(alphabet='ACGT', alignment=alignment)\n",
-            BiopythonDeprecationWarning,
-        )
-        if isinstance(instances, (Seq, MutableSeq, str)):
-            raise TypeError(
-                "instances should be iterator of Seq objects or strings. "
-                "If a single sequence is given, will treat each character "
-                "as a separate sequence."
-            )
-
-        length = None
-        if instances is not None:
-            sequences = []
-            for instance in instances:
-                if length is None:
-                    length = len(instance)
-                elif length != len(instance):
-                    message = (
-                        "All instances should have the same length (%d found, %d expected)"
-                        % (len(instance), length)
-                    )
-                    raise ValueError(message)
-                if not isinstance(instance, Seq):
-                    instance = Seq(str(instance))
-                sequences.append(instance)
-            # no errors were raised; store the instances:
-            self.extend(sequences)
-        self.length = length
-        self.alphabet = alphabet
-
-    def __str__(self):
-        """Return a string containing the sequences of the motif."""
-        text = ""
-        for instance in self:
-            text += str(instance) + "\n"
-        return text
-
-    def count(self):
-        """Count nucleotides in a position."""
-        counts = {}
-        for letter in self.alphabet:
-            counts[letter] = [0] * self.length
-        for instance in self:
-            for position, letter in enumerate(instance):
-                counts[letter][position] += 1
-        return counts
-
-    def search(self, sequence):
-        """Find positions of motifs in a given sequence.
-
-        This is a generator function, returning found positions of motif
-        instances in a given sequence.
-        """
-        warnings.warn(
-            """instances.search(sequence) has been deprecated. Please use sequence.search(instances) instead, where sequence is a Seq object.""",
-            BiopythonDeprecationWarning,
-        )
-        for pos in range(len(sequence) - self.length + 1):
-            for instance in self:
-                if instance == sequence[pos : pos + self.length]:
-                    yield (pos, instance)
-                    break  # no other instance will fit (we don't want to return multiple hits)
-
-    def reverse_complement(self):
-        """Compute reverse complement of sequences."""
-        from Bio.Seq import Seq, MutableSeq
-        from Bio.SeqRecord import SeqRecord
-
-        instances = Instances(alphabet=self.alphabet)
-        instances.length = self.length
-        for instance in self:
-            if isinstance(instance, (Seq, MutableSeq, SeqRecord)):
-                instance = instance.reverse_complement()
-            elif isinstance(instance, str):
-                instance = reverse_complement(instance)
-            else:
-                raise RuntimeError("instance has unexpected type %s" % type(instance))
-            instances.append(instance)
-        return instances
-
-
 class Motif:
     """A class representing sequence motifs."""
 
-    def __init__(self, alphabet="ACGT", alignment=None, counts=None, instances=None):
+    def __init__(self, alphabet="ACGT", alignment=None, counts=None):
         """Initialize the class."""
         from . import matrix
 
         self.name = ""
-        if instances is not None and alignment is not None:
-            raise Exception(
-                ValueError, "Specify either alignment or instances, don't specify both"
-            )
-        if isinstance(alignment, Instances):
-            instances = alignment
-            alignment = None
-        if instances is not None:
-            warnings.warn(
-                "The instances argument has been deprecated.\n"
-                "Instead of"
-                "\n"
-                ">>> instances = [Seq('ACGT'), Seq('ACCT'), Seq('AAGT')]\n"
-                ">>> motif = Motif(alphabet='ACGT', instances=instances)\n"
-                "\n"
-                "please use\n"
-                "\n"
-                ">>> from Bio.Align import Alignment\n"
-                ">>> alignment = Alignment([Seq('ACGT'), Seq('ACCT'), Seq('AAGT')])\n"
-                ">>> motif = Motif(alphabet='ACGT', alignment=alignment)\n",
-                BiopythonDeprecationWarning,
-            )
-            if counts is not None:
-                raise Exception(
-                    ValueError, "Specify either counts or instances, don't specify both"
-                )
-            alignment = Alignment(instances)
-            alphabet = instances.alphabet
         if counts is not None and alignment is not None:
             raise Exception(
                 ValueError, "Specify either counts or an alignment, don't specify both"
@@ -406,15 +276,16 @@ class Motif:
         elif value is None:
             self._background = dict.fromkeys(self.alphabet, 1.0)
         else:
-            if sorted(self.alphabet) != ["A", "C", "G", "T"]:
+            if not self._has_dna_alphabet() and not self._has_rna_alphabet():
                 raise ValueError(
-                    "Setting the background to a single value only works for DNA motifs"
-                    " (in which case the value is interpreted as the GC content)"
+                    "Setting the background to a single value only works for DNA and RNA"
+                    "motifs (in which case the value is interpreted as the GC content)"
                 )
+            T_or_U = "T" if self._has_dna_alphabet() else "U"
             self._background["A"] = (1.0 - value) / 2.0
             self._background["C"] = value / 2.0
             self._background["G"] = value / 2.0
-            self._background["T"] = (1.0 - value) / 2.0
+            self._background[T_or_U] = (1.0 - value) / 2.0
         total = sum(self._background.values())
         for letter in self.alphabet:
             self._background[letter] /= total
@@ -472,17 +343,6 @@ class Motif:
         """Calculate and return the position specific scoring matrix for this motif."""
         return self.pwm.log_odds(self._background)
 
-    @property
-    def instances(self):
-        """Return the sequences from which the motif was built."""
-        warnings.warn(
-            """The instances attribute has been deprecated. Instead of mymotif.instances, please use mymotif.alignment.sequences.""",
-            BiopythonDeprecationWarning,
-        )
-        if self.alignment is None:
-            return None
-        return self.alignment.sequences
-
     def __str__(self, masked=False):
         """Return string representation of a motif."""
         text = ""
@@ -508,32 +368,45 @@ class Motif:
         else:
             return self.length
 
+    def _has_dna_alphabet(self):
+        return sorted(self.alphabet) == ["A", "C", "G", "T"]
+
+    def _has_rna_alphabet(self):
+        return sorted(self.alphabet) == ["A", "C", "G", "U"]
+
     def reverse_complement(self):
         """Return the reverse complement of the motif as a new motif."""
         alphabet = self.alphabet
+        if not self._has_dna_alphabet() and not self._has_rna_alphabet():
+            raise ValueError(
+                "Calculating reverse complement only works for DNA and RNA motifs"
+            )
+        T_or_U = "T" if self._has_dna_alphabet() else "U"
         if self.alignment is not None:
             alignment = self.alignment.reverse_complement()
+            if T_or_U == "U":
+                alignment.sequences = [s.replace("T", "U") for s in alignment.sequences]
             res = Motif(alphabet=alphabet, alignment=alignment)
         else:  # has counts
             counts = {
-                "A": self.counts["T"][::-1],
+                "A": self.counts[T_or_U][::-1],
                 "C": self.counts["G"][::-1],
                 "G": self.counts["C"][::-1],
-                "T": self.counts["A"][::-1],
+                T_or_U: self.counts["A"][::-1],
             }
             res = Motif(alphabet=alphabet, counts=counts)
         res.__mask = self.__mask[::-1]
         res.background = {
-            "A": self.background["T"],
+            "A": self.background[T_or_U],
             "C": self.background["G"],
             "G": self.background["C"],
-            "T": self.background["A"],
+            T_or_U: self.background["A"],
         }
         res.pseudocounts = {
-            "A": self.pseudocounts["T"],
+            "A": self.pseudocounts[T_or_U],
             "C": self.pseudocounts["G"],
             "G": self.pseudocounts["C"],
-            "T": self.pseudocounts["A"],
+            T_or_U: self.pseudocounts["A"],
         }
         return res
 
@@ -592,12 +465,10 @@ class Motif:
                 values[mask] += frequencies * np.log2(frequencies / background[letter])
         return values
 
-    def weblogo(self, fname, fmt="PNG", version=None, **kwds):
+    def weblogo(self, fname, fmt="PNG", **kwds):
         """Download and save a weblogo using the Berkeley weblogo service.
 
         Requires an internet connection.
-
-        The version parameter is deprecated and has no effect.
 
         The parameters from ``**kwds`` are passed directly to the weblogo server.
 
@@ -641,12 +512,6 @@ class Motif:
             'color4': '',
 
         """
-        if version is not None:
-            warnings.warn(
-                "The version parameter is deprecated and has no effect.",
-                BiopythonDeprecationWarning,
-            )
-
         if set(self.alphabet) == set("ACDEFGHIKLMNPQRSTVWY"):
             alpha = "alphabet_protein"
         elif set(self.alphabet) == set("ACGU"):
@@ -704,7 +569,7 @@ class Motif:
             im = response.read()
             f.write(im)
 
-    def __format__(self, format_spec):
+    def __format__(self, format_spec, **kwargs):
         """Return a string representation of the Motif in the given format.
 
         Currently supported formats:
@@ -728,7 +593,7 @@ class Motif:
             from Bio.motifs import clusterbuster
 
             motifs = [self]
-            return clusterbuster.write(motifs)
+            return clusterbuster.write(motifs, **kwargs)
         elif not format_spec:
             # Follow python convention and default to using __str__
             return str(self)
@@ -748,7 +613,7 @@ class Motif:
         return self.__format__(format_spec)
 
 
-def write(motifs, fmt):
+def write(motifs, fmt, **kwargs):
     """Return a string representation of motifs in the given format.
 
     Currently supported formats (case is ignored):
@@ -770,7 +635,7 @@ def write(motifs, fmt):
     elif fmt == "clusterbuster":
         from Bio.motifs import clusterbuster
 
-        return clusterbuster.write(motifs)
+        return clusterbuster.write(motifs, **kwargs)
     else:
         raise ValueError("Unknown format type %s" % fmt)
 

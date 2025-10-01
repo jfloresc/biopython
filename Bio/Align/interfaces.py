@@ -11,12 +11,14 @@
 Unless you are writing a new parser or writer for Bio.Align, you should not
 use this module.  It provides base classes to try and simplify things.
 """
+
 from abc import ABC
 from abc import abstractmethod
 from typing import Optional
 
 from Bio import StreamModeError
-from Bio.Align import Alignments, AlignmentsAbstractBaseClass
+from Bio.Align import Alignments
+from Bio.Align import AlignmentsAbstractBaseClass
 
 
 class AlignmentIterator(AlignmentsAbstractBaseClass):
@@ -31,7 +33,7 @@ class AlignmentIterator(AlignmentsAbstractBaseClass):
     """
 
     mode = "t"  # assume text files by default
-    fmt: Optional[str] = None  # to be defined in the subclass
+    fmt: str | None = None  # to be defined in the subclass
 
     def __init__(self, source):
         """Create an AlignmentIterator object.
@@ -192,7 +194,7 @@ class AlignmentIterator(AlignmentsAbstractBaseClass):
         self._index = 0
 
 
-class AlignmentWriter(ABC):
+class AlignmentWriter(ABC):  # noqa: B024
     """Base class for alignment writers. This class should be subclassed.
 
     It is intended for alignment file formats with an (optional)
@@ -206,12 +208,12 @@ class AlignmentWriter(ABC):
     followed finally by write_footer().
 
     Subclasses may define the following class attributes:
-    - mode   - 'w' or 'wb' for text or binary files, respectively
+    - mode   - 't' or 'b' for text or binary files, respectively
     - fmt    - a human-readable name for the file format.
     """
 
-    mode = "w"  # assume text files by default
-    fmt: Optional[str] = None  # to be defined in the subclass
+    mode = "t"  # assume text files by default
+    fmt: str | None = None  # to be defined in the subclass
 
     def __init__(self, target):
         """Create the writer object.
@@ -227,7 +229,7 @@ class AlignmentWriter(ABC):
         """
         if target is not None:
             # target is None if we only use the writer to format strings.
-            if self.mode == "w":
+            if self.mode == "t":
                 try:
                     target.write("")
                 except TypeError:
@@ -235,10 +237,10 @@ class AlignmentWriter(ABC):
                     raise StreamModeError("File must be opened in text mode.") from None
                 except AttributeError:
                     # target is a path
-                    stream = open(target, self.mode)
+                    stream = open(target, "w" + self.mode)
                 else:
                     stream = target
-            elif self.mode == "wb":
+            elif self.mode == "b":
                 try:
                     target.write(b"")
                 except TypeError:
@@ -248,13 +250,12 @@ class AlignmentWriter(ABC):
                     ) from None
                 except AttributeError:
                     # target is a path
-                    stream = open(target, self.mode)
+                    stream = open(target, "w" + self.mode)
                 else:
                     stream = target
             else:
                 raise RuntimeError("Unknown mode '%s'" % self.mode)
             self._stream = stream
-
         self._target = target
 
     def write_header(self, stream, alignments):
@@ -278,9 +279,11 @@ class AlignmentWriter(ABC):
 
         alignment - an Alignment object
         """
-        raise NotImplementedError("This method should be implemented")
+        if self.mode == "t":
+            raise NotImplementedError("This method should be implemented")
         ###################################################
         # You MUST implement this method in the subclass. #
+        # if the file mode is text.                       #
         ###################################################
 
     def write_single_alignment(self, stream, alignments):
@@ -316,7 +319,7 @@ class AlignmentWriter(ABC):
     write_alignments = write_multiple_alignments
 
     def write_file(self, stream, alignments):
-        """Write the alignments to the file strenm, and return the number of alignments.
+        """Write the alignments to the file stream, and return the number of alignments.
 
         alignments - A list or iterator returning Alignment objects
         stream     - Output file stream.

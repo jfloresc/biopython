@@ -9,24 +9,23 @@
 
 """Tests for the GenBank module."""
 
-
 import os
 import sys
+import tempfile
 import unittest
 import warnings
 from datetime import datetime
-
 from io import StringIO
 
-from Bio import BiopythonWarning
 from Bio import BiopythonParserWarning
-
-from Bio import SeqIO
-from Bio.SeqRecord import SeqRecord
-from Bio.Seq import Seq, UndefinedSequenceError
+from Bio import BiopythonWarning
 
 # GenBank stuff to test:
 from Bio import GenBank
+from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.Seq import UndefinedSequenceError
+from Bio.SeqRecord import SeqRecord
 
 
 class TestBasics(unittest.TestCase):
@@ -3470,6 +3469,114 @@ qualifiers:
             dbxrefs,
         )
 
+    def test_feature_parser_date_warning(self):
+        path = "GenBank/noref_date_warning.gb"
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            with open(path) as handle:
+                records = GenBank.Iterator(handle, self.feat_parser)
+                record = next(records)
+            self.assertEqual(len(caught), 2)
+            self.assertEqual(caught[0].category, BiopythonParserWarning)
+            self.assertEqual(caught[1].category, BiopythonParserWarning)
+            self.assertEqual(
+                str(caught[0].message),
+                "LOCUS line does not contain - at position 65 in date:\n"
+                "LOCUS       NM_006141    1622 bp    mRNA            PRI       yyyy/mon/dd\n",
+            )
+            self.assertEqual(
+                str(caught[1].message),
+                "LOCUS line does not contain - at position 69 in date:\n"
+                "LOCUS       NM_006141    1622 bp    mRNA            PRI       yyyy/mon/dd\n",
+            )
+        seq = "GGCAAGATGGCGCCGGTGGGGGTGGAGAAGAAGCTGCTGCTAGGTCCCAACGGG...AAA"
+        id = "NM_006141.1"
+        name = "NM_006141"
+        description = (
+            "Homo sapiens dynein, cytoplasmic, light intermediate polypeptide 2"
+            " (DNCLI2), mRNA"
+        )
+        annotations = {
+            "accessions": ["NM_006141"],
+            "comment": """\
+PROVISIONAL REFSEQ: This record has not yet been subject to final
+NCBI review. The reference sequence was derived from AF035812.1.""",
+            "data_file_division": "PRI",
+            # "date": "01-NOV-2000", NB: no date
+            "gi": "5453633",
+            "keywords": [""],
+            "molecule_type": "mRNA",
+            "organism": "Homo sapiens",
+            "sequence_version": 1,
+            "source": "human",
+            "taxonomy": [
+                "Eukaryota",
+                "Metazoa",
+                "Chordata",
+                "Craniata",
+                "Vertebrata",
+                "Euteleostomi",
+                "Mammalia",
+                "Eutheria",
+                "Primates",
+                "Catarrhini",
+                "Hominidae",
+                "Homo",
+            ],
+        }
+        references = []
+        features = (
+            (
+                """\
+type: source
+location: [0:1622](+)
+qualifiers:
+    Key: db_xref, Value: ['taxon:9606']
+    Key: map, Value: ['16']
+    Key: organism, Value: ['Homo sapiens']
+""",
+                1,
+            ),
+            (
+                """\
+type: gene
+location: [0:1622](+)
+qualifiers:
+    Key: db_xref, Value: ['LocusID:1783']
+    Key: gene, Value: ['DNCLI2']
+    Key: note, Value: ['LIC2']
+""",
+                1,
+            ),
+            (
+                """\
+type: CDS
+location: [6:1485](+)
+qualifiers:
+    Key: codon_start, Value: ['1']
+    Key: db_xref, Value: ['LocusID:1783', 'GI:5453634']
+    Key: gene, Value: ['DNCLI2']
+    Key: note, Value: ['similar to R. norvegicus and G. gallus dynein light intermediate chain 2, Swiss-Prot Accession Numbers Q62698 and Q90828, respectively']
+    Key: product, Value: ['dynein, cytoplasmic, light intermediate polypeptide 2']
+    Key: protein_id, Value: ['NP_006132.1']
+    Key: translation, Value: ['MAPVGVEKKLLLGPNGPAVAAAGDLTSEEEEGQSLWSSILSEVSTRARSKLPSGKNILVFGEDGSGKTTLMTKLQGAEHGKKGRGLEYLYLSVHDEDRDDHTRCNVWILDGDLYHKGLLKFAVSAESLPETLVIFVADMSRPWTVMESLQKWASVLREHIDKMKIPPEKMRELERKFVKDFQDYMEPEEGCQGSPQRRGPLTSGSDEENVALPLGDNVLTHNLGIPVLVVCTKCDAVSVLEKEHDYRDEHLDFIQSHLRRFCLQYGAALIYTSVKEEKNLDLLYKYIVHKTYGFHFTTPALVVEKDAVFIPAGWDNEKKIAILHENFTTVKPEDAYEDFIVKPPVRKLVHDKELAAEDEQVFLMKQQSLLAKQPATPTRASESPARGPSGSPRTQGRGGPASVPSSSPGTSVKKPDPNIKNNAASEGVLASFFNSLLSKKTGSPGSPGAGGVQSTAKKSGQKTVLSNVQEELDRMTRKPDSMVTNSSTENEA']
+""",
+                1,
+            ),
+        )
+        dbxrefs = []
+        self.perform_feature_parser_test(
+            record,
+            seq,
+            id,
+            name,
+            description,
+            annotations,
+            references,
+            features,
+            dbxrefs,
+        )
+
     def test_feature_parser_02(self):
         path = "GenBank/cor6_6.gb"
         with open(path) as handle:
@@ -5981,7 +6088,6 @@ qualifiers:
                 ),
             )
             dbxrefs = []
-            self.maxDiff = None
             self.perform_feature_parser_test(
                 record,
                 seq,
@@ -7528,7 +7634,7 @@ class GenBankTests(unittest.TestCase):
                 "join{[5399:5600](+), [5699:6100](+), [0:100](-), [<6800:7000](-)}",
             )
 
-    def test_implicit_orign_wrap_extract_and_translate(self):
+    def test_implicit_origin_wrap_extract_and_translate(self):
         """Test that features wrapped around origin give expected data."""
         path = "GenBank/bad_origin_wrap_CDS.gb"
         with warnings.catch_warnings():
@@ -7639,6 +7745,29 @@ KEYWORDS    """,
         )
         embl = record.format("embl")
         self.assertIn("XX\nPR   Project:PRJNA57779;\nXX\n", embl)
+
+    def test_dblink_multiline(self):
+        """Parse GenBank record with multiline DBLINK entries."""
+        path = "GenBank/EZ116220.gb"
+        record = SeqIO.read(path, "gb")
+        self.assertEqual(
+            record.dbxrefs,
+            [
+                "BioProject:PRJNA39555",
+                "Sequence Read Archive:SRX001885, SRX001121, SRX001531, SRX001530, SRX001529",
+            ],
+        )
+        gb = record.format("gb")
+        self.assertTrue(
+            """
+DBLINK      BioProject: PRJNA39555
+            Sequence Read Archive: SRX001885, SRX001121, SRX001531, SRX001530, SRX001529
+KEYWORDS    """
+            in gb,
+            gb,
+        )
+        embl = record.format("embl")
+        self.assertIn("XX\nPR   Project:PRJNA39555;\nXX\n", embl)
 
     def test_dbline_gb_embl(self):
         """Parse GenBank/EMBL paired records with PR project entry: GenBank."""
@@ -7813,15 +7942,17 @@ KEYWORDS    """,
     def test_qualifier_escaping_write(self):
         """Check qualifier escaping is preserved when writing."""
         # Write some properly escaped qualifiers and test
-        genbank_out = "GenBank/qualifier_escaping_write.gb"
-        record = SeqIO.read(genbank_out, "gb")
+        genbank_in = "GenBank/qualifier_escaping_write.gb"
+        record = SeqIO.read(genbank_in, "gb")
         f1 = record.features[0]
         f2 = record.features[1]
         f1.qualifiers["note"][0] = '"Should" now "be" escaped in "file"'
         f2.qualifiers["note"][0] = '"Should also be escaped in file"'
-        SeqIO.write(record, genbank_out, "gb")
-        # Read newly escaped qualifiers and test
-        record = SeqIO.read(genbank_out, "gb")
+        with tempfile.NamedTemporaryFile("w+") as genbank_out:
+            SeqIO.write(record, genbank_out, "gb")
+            genbank_out.seek(0)
+            # Read newly escaped qualifiers and test
+            record = SeqIO.read(genbank_out, "gb")
         f1 = record.features[0]
         f2 = record.features[1]
         self.assertEqual(
@@ -8099,6 +8230,14 @@ class LineOneTests(unittest.TestCase):
                 "DNA",
                 "BCT",
                 None,
+            ),
+            (
+                "LOCUS       AB070938                6497 bp    DNA     linear   BCT"
+                " 1-Oct-2001\n",
+                "linear",
+                "DNA",
+                "BCT",
+                [BiopythonParserWarning, BiopythonParserWarning],
             ),
             (
                 "LOCUS       NC_005816               9609 bp    DNA     circular BCT"

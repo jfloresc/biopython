@@ -44,7 +44,7 @@ import re
 import shutil
 import sys
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Optional, Tuple
+from typing import Optional
 from urllib.request import Request
 from urllib.request import urlcleanup
 from urllib.request import urlopen
@@ -290,9 +290,7 @@ class PDBList:
             file_type = (
                 "pdb"
                 if file_format == "pdb"
-                else "mmCIF"
-                if file_format == "mmCif"
-                else "XML"
+                else "mmCIF" if file_format == "mmCif" else "XML"
             )
             url = (
                 self.pdb_server
@@ -338,8 +336,12 @@ class PDBList:
         try:
             urlcleanup()
             urlretrieve(url, filename)
-        except OSError:
-            print("Desired structure doesn't exist")
+        except OSError as e:
+            print(
+                "Desired structure not found or download failed."
+                f" '{pdb_code}': {str(e)}"
+            )
+            return None
         else:
             with gzip.open(filename, "rb") as gz:
                 with open(final_file, "wb") as out:
@@ -412,12 +414,12 @@ class PDBList:
 
     def download_pdb_files(
         self,
-        pdb_codes: List[str],
+        pdb_codes: list[str],
         obsolete: bool = False,
-        pdir: Optional[str] = None,
-        file_format: Optional[str] = None,
+        pdir: str | None = None,
+        file_format: str | None = None,
         overwrite: bool = False,
-        max_num_threads: Optional[int] = None,
+        max_num_threads: int | None = None,
     ):
         """Fetch set of PDB structure files from the PDB server and store them locally.
 
@@ -458,7 +460,7 @@ class PDBList:
                 pdb_codes,
             )
 
-    def get_all_assemblies(self, file_format: str = "") -> List[Tuple[str, str]]:
+    def get_all_assemblies(self, file_format: str = "") -> list[tuple[str, str]]:
         """Retrieve the list of PDB entries with an associated bio assembly.
 
         The requested list will be cached to avoid multiple calls to the server.
@@ -484,7 +486,7 @@ class PDBList:
         data = json.dumps(body).encode("utf-8")
         headers = {
             "Content-Type": "application/json; charset=utf-8",
-            "Content-Length": len(data),
+            "Content-Length": str(len(data)),
         }
         request = Request("https://search.rcsb.org/rcsbsearch/v2/query", data, headers)
         with urlopen(request) as response:
@@ -578,9 +580,9 @@ class PDBList:
 
     def download_all_assemblies(
         self,
-        listfile: Optional[str] = None,
-        file_format: Optional[str] = None,
-        max_num_threads: Optional[int] = None,
+        listfile: str | None = None,
+        file_format: str | None = None,
+        max_num_threads: int | None = None,
     ):
         """Retrieve all biological assemblies not in the local PDB copy.
 
@@ -610,9 +612,9 @@ class PDBList:
 
     def download_entire_pdb(
         self,
-        listfile: Optional[str] = None,
-        file_format: Optional[str] = None,
-        max_num_threads: Optional[int] = None,
+        listfile: str | None = None,
+        file_format: str | None = None,
+        max_num_threads: int | None = None,
     ):
         """Retrieve all PDB entries not present in the local PDB copy.
 
@@ -645,9 +647,9 @@ class PDBList:
 
     def download_obsolete_entries(
         self,
-        listfile: Optional[str] = None,
-        file_format: Optional[str] = None,
-        max_num_threads: Optional[int] = None,
+        listfile: str | None = None,
+        file_format: str | None = None,
+        max_num_threads: int | None = None,
     ):
         """Retrieve all obsolete PDB entries not present in local obsolete PDB copy.
 

@@ -16,13 +16,11 @@ except ImportError:
 
 import os
 import pickle
-from collections import Counter
 import unittest
-
+from collections import Counter
 
 from Bio import SeqIO
 from Bio.Align import substitution_matrices
-
 from Bio.Data import IUPACData
 
 nucleotide_alphabet = IUPACData.unambiguous_dna_letters
@@ -2410,7 +2408,7 @@ class TestLoading(unittest.TestCase):
             try:
                 m = substitution_matrices.load(name)
             except Exception:
-                self.fail(f"Failed to load subsitution matrix '{name}'")
+                self.fail(f"Failed to load substitution matrix '{name}'")
 
     def test_reading(self):
         """Confirm matrix reading works with filename or handle."""
@@ -2427,7 +2425,7 @@ class TestLoading(unittest.TestCase):
         self.assertEqual(len(fname_matrix), 24)
         self.assertEqual(len(fname_matrix[0]), 24)
 
-        with open(matrix_path, "r") as handle:
+        with open(matrix_path) as handle:
             handle_matrix = substitution_matrices.read(handle)
             self.assertFalse(handle.closed)
         self.assertTrue(handle.closed)

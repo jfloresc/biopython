@@ -7,13 +7,18 @@
 
 """Chain class, used in Structure objects."""
 
+from typing import Optional
+from typing import TYPE_CHECKING
+
 from Bio.PDB.Entity import Entity
 from Bio.PDB.internal_coords import IC_Chain
 
-from typing import Optional
+if TYPE_CHECKING:
+    from Bio.PDB.Model import Model
+    from Bio.PDB.Residue import Residue
 
 
-class Chain(Entity):
+class Chain(Entity["Model", "Residue"]):
     """Define Chain class.
 
     Chain is an object of type Entity, stores residues and includes a method to
@@ -89,6 +94,12 @@ class Chain(Entity):
          - id - int, residue resseq
 
         """
+        try:
+            id = int(id)
+        except ValueError:
+            pass
+        except TypeError:
+            pass
         if isinstance(id, int):
             id = (" ", id, " ")
         return id
@@ -190,8 +201,8 @@ class Chain(Entity):
     def internal_to_atom_coordinates(
         self,
         verbose: bool = False,
-        start: Optional[int] = None,
-        fin: Optional[int] = None,
+        start: int | None = None,
+        fin: int | None = None,
     ):
         """Create/update atom coordinates from internal coordinates.
 
@@ -208,7 +219,8 @@ class Chain(Entity):
                 verbose=verbose, start=start, fin=fin
             )
         else:
+            structure = None if self.parent is None else self.parent.parent
             raise Exception(
                 "Structure %s Chain %s does not have internal coordinates set"
-                % (self.parent.parent, self)
+                % (structure, self)
             )

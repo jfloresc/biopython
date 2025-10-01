@@ -7,9 +7,9 @@
 
 import re
 
-from ._base import _BaseExonerateParser, _BaseExonerateIndexer, _STRAND_MAP
-from typing import Type
-
+from ._base import _BaseExonerateIndexer
+from ._base import _BaseExonerateParser
+from ._base import _STRAND_MAP
 
 __all__ = ("ExonerateVulgarParser", "ExonerateVulgarIndexer")
 
@@ -176,7 +176,7 @@ class ExonerateVulgarParser(_BaseExonerateParser):
 class ExonerateVulgarIndexer(_BaseExonerateIndexer):
     """Indexer class for exonerate vulgar lines."""
 
-    _parser: Type[_BaseExonerateParser] = ExonerateVulgarParser
+    _parser: type[_BaseExonerateParser] = ExonerateVulgarParser
     _query_mark = b"vulgar"
 
     def get_qresult_id(self, pos):

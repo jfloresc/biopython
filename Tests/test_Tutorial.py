@@ -53,19 +53,19 @@
 
 """Tests for Tutorial module."""
 
-import unittest
 import doctest
 import os
 import sys
+import unittest
 import warnings
-
-from Bio import BiopythonDeprecationWarning
-from Bio import BiopythonExperimentalWarning
-from Bio import MissingExternalDependencyError
 
 # This is the same mechanism used for run_tests.py --offline
 # to skip tests requiring the network.
 import requires_internet
+
+from Bio import BiopythonDeprecationWarning
+from Bio import BiopythonExperimentalWarning
+from Bio import MissingExternalDependencyError
 
 try:
     requires_internet.check()
@@ -253,7 +253,7 @@ class TutorialTestCase(unittest.TestCase):
     # Single method to be invoked by run_tests.py
     def test_doctests(self):
         """Run tutorial doctests."""
-        runner = doctest.DocTestRunner()
+        runner = doctest.DocTestRunner(optionflags=doctest.ELLIPSIS)
         failures = []
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", BiopythonDeprecationWarning)
@@ -304,7 +304,7 @@ if __name__ == "__main__":
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", BiopythonDeprecationWarning)
         warnings.simplefilter("ignore", BiopythonExperimentalWarning)
-        tests = doctest.testmod()
+        tests = doctest.testmod(optionflags=doctest.ELLIPSIS)
     if tests.failed:
         raise RuntimeError("%i/%i tests failed" % tests)
     print("Tests done")

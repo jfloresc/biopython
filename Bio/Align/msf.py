@@ -12,14 +12,14 @@ tools such as T-COFFEE and MUSCLE support it as an optional output format.
 
 You are expected to use this module via the Bio.Align functions.
 """
+
 import warnings
 
+from Bio import BiopythonParserWarning
 from Bio.Align import Alignment
 from Bio.Align import interfaces
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-
-from Bio import BiopythonParserWarning
 
 
 class AlignmentIterator(interfaces.AlignmentIterator):
@@ -28,9 +28,8 @@ class AlignmentIterator(interfaces.AlignmentIterator):
     fmt = "MSF"
 
     def _read_next_alignment(self, stream):
-        try:
-            line = next(stream)
-        except StopIteration:
+        line = stream.readline()
+        if not line:
             if stream.tell() == 0:
                 raise ValueError("Empty file.") from None
             return
@@ -165,9 +164,8 @@ class AlignmentIterator(interfaces.AlignmentIterator):
         else:
             raise ValueError("End of file while looking for end of header // line.")
 
-        try:
-            line = next(stream)
-        except StopIteration:
+        line = stream.readline()
+        if not line:
             raise ValueError("End of file after // line, expected sequences.") from None
         if line.strip():
             raise ValueError("After // line, expected blank line before sequences.")
@@ -222,11 +220,11 @@ class AlignmentIterator(interfaces.AlignmentIterator):
                 seq += "-" * (aln_length - len(seq))
             seqs[index] = seq
 
-        coordinates = Alignment.infer_coordinates(seqs)
-        seqs = (Seq(seq.replace("-", "")) for seq in seqs)
+        seqs = [seq.encode() for seq in seqs]
+        seqs, coordinates = Alignment.parse_printed_alignment(seqs)
         records = [
             SeqRecord(
-                seq,
+                Seq(seq),
                 id=name,
                 name=name,
                 description=name,

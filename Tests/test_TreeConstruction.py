@@ -6,24 +6,24 @@
 """Unit tests for the Bio.Phylo.TreeConstruction module."""
 
 import os
-import unittest
 import tempfile
-
+import unittest
 from io import StringIO
+from itertools import combinations
+
 from Bio import Align
 from Bio import AlignIO
 from Bio import Phylo
 from Bio.Phylo import BaseTree
-from Bio.Phylo import TreeConstruction
 from Bio.Phylo import Consensus
+from Bio.Phylo import TreeConstruction
 from Bio.Phylo.TreeConstruction import _Matrix
-from Bio.Phylo.TreeConstruction import DistanceMatrix
 from Bio.Phylo.TreeConstruction import DistanceCalculator
+from Bio.Phylo.TreeConstruction import DistanceMatrix
 from Bio.Phylo.TreeConstruction import DistanceTreeConstructor
-from Bio.Phylo.TreeConstruction import ParsimonyScorer
 from Bio.Phylo.TreeConstruction import NNITreeSearcher
+from Bio.Phylo.TreeConstruction import ParsimonyScorer
 from Bio.Phylo.TreeConstruction import ParsimonyTreeConstructor
-
 
 temp_dir = tempfile.mkdtemp()
 
@@ -233,7 +233,13 @@ class DistanceTreeConstructorTest(unittest.TestCase):
         # Phylo.write(tree, tree_file, 'newick')
         ref_tree = Phylo.read("./TreeConstruction/upgma.tre", "newick")
         self.assertTrue(Consensus._equal_topology(tree, ref_tree))
-        # ref_tree.close()
+        # check for equal distance of all terminal nodes from the root
+        ref_tree.root_at_midpoint()
+        for len1, len2 in combinations(
+            [depth for node, depth in ref_tree.depths().items() if node.is_terminal()],
+            2,
+        ):
+            self.assertAlmostEqual(len1, len2)
 
     def test_nj_msa(self):
         tree = self.constructor.nj(self.dm_msa)
